@@ -14,5 +14,7 @@ model User {
   surname     String
   phonenumber String @unique
   profilePic  String @default("")
+  email       String @unique
+  password    String
   smsCode     String @default("000000")
 }
