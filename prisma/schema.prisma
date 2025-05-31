@@ -16,6 +16,7 @@ model User {
   profilePic  String   @default("")
   email       String   @unique
   password    String
+  courses     String[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -23,6 +24,13 @@ model User {
 model CoursesCategory {
   id        String @id @default(uuid())
   title     String
+  shortName String
   thumbnail String
   goal      String
+}
+
+model Lessons {
+  id     String  @id @default(uuid())
+  title  String
+  isDemo Boolean @default(false)
 }
