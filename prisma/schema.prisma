@@ -9,12 +9,20 @@ datasource db {
 }
 
 model User {
-  id          String @id @default(uuid())
+  id          String   @id @default(uuid())
   name        String
   surname     String
-  phonenumber String @unique
-  profilePic  String @default("")
-  email       String @unique
+  phonenumber String   @unique
+  profilePic  String   @default("")
+  email       String   @unique
   password    String
-  smsCode     String @default("000000")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CoursesCategory {
+  id        String @id @default(uuid())
+  title     String
+  thumbnail String
+  goal      String
 }

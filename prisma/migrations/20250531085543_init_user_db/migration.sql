@@ -7,9 +7,20 @@ CREATE TABLE "User" (
     "profilePic" TEXT NOT NULL DEFAULT '',
     "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
-    "smsCode" TEXT NOT NULL DEFAULT '000000',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CoursesCategory" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "thumbnail" TEXT NOT NULL,
+    "goal" TEXT NOT NULL,
+
+    CONSTRAINT "CoursesCategory_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex

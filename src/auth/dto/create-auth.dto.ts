@@ -23,7 +23,4 @@ export class CreateUserDto {
   @MinLength(8)
   password: string
 
-  @IsString()
-  @IsNotEmpty()
-  smsCode: string
 }
