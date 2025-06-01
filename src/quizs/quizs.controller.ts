@@ -5,30 +5,28 @@ import { UpdateQuizDto } from './dto/update-quiz.dto';
 
 @Controller('quizs')
 export class QuizsController {
-  constructor(private readonly quizsService: QuizsService) {}
+  constructor(private readonly quizsService: QuizsService) { }
 
-  @Post()
-  create(@Body() createQuizDto: CreateQuizDto) {
-    return this.quizsService.create(createQuizDto);
-  }
-
-  @Get()
-  findAll() {
-    return this.quizsService.findAll();
+  @Post(":id/new-quiz")
+  create(
+    @Body() createQuizDto: CreateQuizDto,
+    @Param("id") id: string
+  ) {
+    return this.quizsService.create(createQuizDto, id);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.quizsService.findOne(+id);
+  async findAll(@Param() id: string) {
+    return this.quizsService.findAll(id);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateQuizDto: UpdateQuizDto) {
-    return this.quizsService.update(+id, updateQuizDto);
+  @Patch(':id/:quizid')
+  update(@Param('id') id: string, @Param('quizid') quizid: string, @Body() updateQuizDto: UpdateQuizDto) {
+    return this.quizsService.update(id, updateQuizDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.quizsService.remove(+id);
+    return this.quizsService.remove(id);
   }
 }
