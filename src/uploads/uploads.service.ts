@@ -31,7 +31,7 @@ export class UploadsService {
 
     await this.s3.send(command);
 
-    return `https://${this.configService.get('AWS_S3_BUCKET')}.s3.${this.configService.get('AWS_REGION')}.amazonaws.com/${filename}`;
+    return `https://${this.configService.get('AWS_BUCKET_NAME')}.s3.${this.configService.get('AWS_REGION')}.amazonaws.com/${filename}`;
   }
 
   async deleteFile(fileUrl: string) {

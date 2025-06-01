@@ -1,7 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Patch, Put, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('user')

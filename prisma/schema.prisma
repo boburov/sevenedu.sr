@@ -22,15 +22,19 @@ model User {
 }
 
 model CoursesCategory {
-  id        String @id @default(uuid())
+  id        String   @id @default(uuid())
   title     String
   shortName String
   thumbnail String
   goal      String
+  lessons   Lessons[] @relation("CategoryLessons")
 }
 
 model Lessons {
-  id     String  @id @default(uuid())
-  title  String
-  isDemo Boolean @default(false)
+  id                String          @id @default(uuid())
+  title             String
+  isDemo            Boolean         @default(false)
+  videoUrl          String
+  coursesCategoryId String
+  coursesCategory   CoursesCategory @relation("CategoryLessons", fields: [coursesCategoryId], references: [id])
 }

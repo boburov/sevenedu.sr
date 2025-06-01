@@ -10,7 +10,7 @@ import { CoursesModule } from './courses/courses.module';
 import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, UserModule, AuthModule, CoursesModule, UploadsModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, UserModule, AuthModule, CoursesModule, UploadsModule,],
   controllers: [AppController],
   providers: [AppService, MailService],
 })
