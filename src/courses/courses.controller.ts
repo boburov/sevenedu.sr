@@ -32,7 +32,6 @@ export class CoursesController {
     return this.courseService.createCourse(body, id, file);
   }
 
-
   @Get('category/:id')
   async getCategory(@Param('id') id: string) {
     return this.courseService.getcategory(id)

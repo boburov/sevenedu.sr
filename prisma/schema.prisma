@@ -22,7 +22,7 @@ model User {
 }
 
 model CoursesCategory {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   title     String
   shortName String
   thumbnail String
@@ -36,5 +36,41 @@ model Lessons {
   isDemo            Boolean         @default(false)
   videoUrl          String
   coursesCategoryId String
+  quessions         Quessions[]     @relation("Quessions")
+  dictonary         Dictonary[]     @relation("Dictonary")
+  quizs             Quizs[]         @relation("Quizs")
   coursesCategory   CoursesCategory @relation("CategoryLessons", fields: [coursesCategoryId], references: [id])
+}
+
+model Quessions {
+  id        String  @id @default(uuid())
+  quession  String
+  Lessons   Lessons @relation("Quessions", fields: [lessonsId], references: [id])
+  lessonsId String
+}
+
+model Dictonary {
+  id         String  @id @default(uuid())
+  word       String
+  translated String
+  Lessons    Lessons @relation("Dictonary", fields: [lessonsId], references: [id])
+  lessonsId  String
+}
+
+model Quizs {
+  id        String    @id @default(uuid())
+  quiz      String
+  lessonsId String?
+  options   Options[] @relation("Options")
+  Lessons   Lessons?  @relation("Quizs", fields: [lessonsId], references: [id])
+}
+
+model Options {
+  id            String @id @default(uuid())
+  option1       String
+  option2       String
+  option3       String
+  currentOption String
+  quizsId       String
+  Quizs         Quizs  @relation("Options", fields: [quizsId], references: [id])
 }
