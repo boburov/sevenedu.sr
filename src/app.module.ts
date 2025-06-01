@@ -9,9 +9,10 @@ import { MailService } from './mail/mail.service';
 import { CoursesModule } from './courses/courses.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { QuizsModule } from './quizs/quizs.module';
+import { QuessionsModule } from './quessions/quessions.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, UserModule, AuthModule, CoursesModule, UploadsModule, QuizsModule,],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, UserModule, AuthModule, CoursesModule, UploadsModule, QuizsModule, QuessionsModule,],
   controllers: [AppController],
   providers: [AppService, MailService],
 })
