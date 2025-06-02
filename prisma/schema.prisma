@@ -12,10 +12,11 @@ model User {
   id          String   @id @default(uuid())
   name        String?
   surname     String?
-  phonenumber String?  @unique
+  phonenumber String?
   profilePic  String   @default("")
   email       String   @unique
   password    String
+  code        String
   courses     String[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

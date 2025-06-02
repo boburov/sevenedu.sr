@@ -6,7 +6,6 @@ import * as bcrypt from 'bcrypt'
 import { MailService } from 'src/mail/mail.service';
 import { VerifyCodeDto } from './dto/verify-code';
 import { LoginUserDto } from './dto/login-user.dto';
-import { createUserByEmail } from './dto/create-by-email.dto';
 import { UpdateUserDto } from 'src/user/dto/update-user.dto';
 import { UploadsService } from 'src/uploads/uploads.service';
 
@@ -28,49 +27,40 @@ export class AuthService {
     return result;
   }
 
-  async verifyCode(verifyCode: VerifyCodeDto,) {
-    try {
-      const decoded = this.jwt.verify(verifyCode.token);
-
-      if (decoded.code !== verifyCode.code) {
-        throw new HttpException('Kod noto‘g‘ri', 400);
-      }
-
-      return { msg: 'Email tasdiqlandi' };
-    } catch (error) {
-      throw new HttpException('Kod noto‘g‘ri yoki muddati tugagan', 400);
-    }
+  generateRandomCode(): string {
+    return Math.random().toString(36).substring(2, 8).toUpperCase(); // masalan: "K1X3ZP"
   }
 
-  async createUserByEmail(createUserByEmail: createUserByEmail) {
-    const { email, password } = createUserByEmail
-    const exists = await this.prisma.user.findFirst({ where: { email } });
-    if (exists) throw new HttpException("Bu email ro‘yxatdan o‘tgan", 400);
+  async register(dto: CreateUserDto) {
+    const { email, password, name, surname, phonenumber } = dto;
 
-    const code = await this.generateAlphanumericId(6)
+    const existingUser = await this.prisma.user.findUnique({ where: { email } });
+    if (existingUser) throw new HttpException("Bu email allaqachon ro'yxatdan o'tgan", 400);
 
-    this.mailService.sendVerificationCode(email, code)
+    const code = this.generateRandomCode();
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    const hash = await bcrypt.hash(password, 10)
-    const newUser = await this.prisma.user.create({
-      data: {
-        phonenumber: "",
-        name: "",
-        surname: "",
-        profilePic: "",
-        email,
-        password: hash,
-      }
-    })
+    await this.prisma.user.upsert({
+      where: { email },
+      update: { name, surname, phonenumber, email, code, password: hashedPassword },
+      create: { name, surname, phonenumber, email, code, password: hashedPassword }
+    });
 
-    const payload = { username: newUser.id, code, sub: newUser.id };
+    await this.mailService.sendVerificationCode(email, code);
 
-    const token = await this.jwt.sign(payload)
+    return { message: "Tasdiqlash kodi emailga yuborildi" };
+  }
+
+  async verify(verifyCode: VerifyCodeDto) {
+    const { code, email } = verifyCode
+    const find = await this.prisma.user.findFirst({ where: { email } })
+    if (!find) throw new HttpException(`Email not Found`, 404)
+
+    const check = await find.code === code
+    if (!check) return { msg: "wrong code" }
 
     return {
-      msg: "User succesfull created !",
-      token,
-      newUser
+      msg: "userCreated"
     }
   }
 

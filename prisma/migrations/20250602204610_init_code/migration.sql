@@ -6,7 +6,8 @@ CREATE TABLE "User" (
     "phonenumber" TEXT,
     "profilePic" TEXT NOT NULL DEFAULT '',
     "email" TEXT NOT NULL,
-    "password" TEXT,
+    "password" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
     "courses" TEXT[],
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -67,9 +68,6 @@ CREATE TABLE "Quizs" (
 
     CONSTRAINT "Quizs_pkey" PRIMARY KEY ("id")
 );
-
--- CreateIndex
-CREATE UNIQUE INDEX "User_phonenumber_key" ON "User"("phonenumber");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");

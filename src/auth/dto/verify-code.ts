@@ -2,7 +2,7 @@ import { IsString } from "class-validator"
 
 export class VerifyCodeDto {
   @IsString()
-  token: string
+  email: string
 
   @IsString()
   code: string

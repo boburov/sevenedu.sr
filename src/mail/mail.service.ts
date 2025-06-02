@@ -4,7 +4,9 @@ import * as nodemailer from 'nodemailer';
 @Injectable()
 export class MailService {
   private transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
@@ -13,7 +15,7 @@ export class MailService {
 
   async sendVerificationCode(to: string, code: string): Promise<void> {
     await this.transporter.sendMail({
-      from: `7EDU LEARNING CENTER`,
+      from: `"7EDU LEARNING CENTER" boburovshukurullo@gmail.com`,
       to,
       subject: 'Tasdiqlash kodi',
       text: `Sizning tasdiqlash kodingiz: ${code}`,

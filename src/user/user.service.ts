@@ -2,11 +2,13 @@ import { HttpException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UploadsService } from 'src/uploads/uploads.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class UserService {
   constructor(
     private prisma: PrismaService,
+    private jwt: JwtService,
     private uploadService: UploadsService,
   ) { }
 
@@ -71,6 +73,16 @@ export class UserService {
       msg: 'User updated',
       user: updatedUser,
     };
+  }
+
+  async getUserIdFromToken(token: string) {
+    try {
+      const pureToken = token.replace(/^Bearer\s/, '');
+      const decoded = await this.jwt.verify(pureToken);
+      return decoded
+    } catch (error) {
+      throw new HttpException('Yaroqsiz token', 401);
+    }
   }
 
   async deleteUser(id: string) {
