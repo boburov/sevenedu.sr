@@ -40,7 +40,7 @@ export class AuthService {
     const code = this.generateRandomCode();
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await this.prisma.user.upsert({
+    const user = await this.prisma.user.upsert({
       where: { email },
       update: { name, surname, phonenumber, email, code, password: hashedPassword },
       create: { name, surname, phonenumber, email, code, password: hashedPassword }
@@ -48,7 +48,9 @@ export class AuthService {
 
     await this.mailService.sendVerificationCode(email, code);
 
-    return { message: "Tasdiqlash kodi emailga yuborildi" };
+    const token = await this.jwt.sign({ id: user.id })
+
+    return { message: "Tasdiqlash kodi emailga yuborildi", token };
   }
 
   async verify(verifyCode: VerifyCodeDto) {
@@ -59,8 +61,11 @@ export class AuthService {
     const check = await find.code === code
     if (!check) return { msg: "wrong code" }
 
+    const token = await this.jwt.sign({ id: find.id })
+
     return {
-      msg: "userCreated"
+      msg: "userCreated",
+      token
     }
   }
 
