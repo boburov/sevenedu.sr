@@ -10,9 +10,9 @@ datasource db {
 
 model User {
   id          String   @id @default(uuid())
-  name        String
-  surname     String
-  phonenumber String   @unique
+  name        String?
+  surname     String?
+  phonenumber String?  @unique
   profilePic  String   @default("")
   email       String   @unique
   password    String

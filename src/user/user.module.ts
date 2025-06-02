@@ -6,6 +6,7 @@ import { UploadsModule } from 'src/uploads/uploads.module';
 
 @Module({
   imports: [PrismaModule, UploadsModule],
+  exports: [UserModule],
   controllers: [UserController],
   providers: [UserService],
 })

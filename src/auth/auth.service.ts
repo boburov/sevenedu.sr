@@ -6,12 +6,16 @@ import * as bcrypt from 'bcrypt'
 import { MailService } from 'src/mail/mail.service';
 import { VerifyCodeDto } from './dto/verify-code';
 import { LoginUserDto } from './dto/login-user.dto';
+import { createUserByEmail } from './dto/create-by-email.dto';
+import { UpdateUserDto } from 'src/user/dto/update-user.dto';
+import { UploadsService } from 'src/uploads/uploads.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private mailService: MailService,
     private jwt: JwtService,
+    private uploadService: UploadsService,
     private prisma: PrismaService,
   ) { }
 
@@ -38,9 +42,8 @@ export class AuthService {
     }
   }
 
-  async createUser(createUserDto: CreateUserDto) {
-    const { name, surname, email, phonenumber, password } = createUserDto
-
+  async createUserByEmail(createUserByEmail: createUserByEmail) {
+    const { email, password } = createUserByEmail
     const exists = await this.prisma.user.findFirst({ where: { email } });
     if (exists) throw new HttpException("Bu email ro‘yxatdan o‘tgan", 400);
 
@@ -51,16 +54,16 @@ export class AuthService {
     const hash = await bcrypt.hash(password, 10)
     const newUser = await this.prisma.user.create({
       data: {
-        name: name,
-        surname: surname,
+        phonenumber: "",
+        name: "",
+        surname: "",
         profilePic: "",
-        email: email,
-        phonenumber: phonenumber,
+        email,
         password: hash,
       }
     })
 
-    const payload = { username: newUser.name, code, sub: newUser.id };
+    const payload = { username: newUser.id, code, sub: newUser.id };
 
     const token = await this.jwt.sign(payload)
 
@@ -69,6 +72,65 @@ export class AuthService {
       token,
       newUser
     }
+  }
+
+  async updateUser(
+    id: string,
+    updateUser: UpdateUserDto,
+    file: Express.Multer.File,
+    type: string,
+  ) {
+    if (!updateUser) {
+      throw new HttpException('Body kiritilmagan', 400);
+    }
+
+    const { name, surname, phonenumber, email, password } = updateUser;
+
+    const user = await this.prisma.user.findFirst({ where: { id } });
+    if (!user) {
+      throw new HttpException('User Not Found', 404);
+    }
+
+    const findEmail = await this.prisma.user.findFirst({
+      where: { email, NOT: { id } },
+    });
+
+    if (findEmail) {
+      throw new HttpException(`You can't use this email`, 400);
+    }
+
+    let newProfilePic = user.profilePic;
+
+    if (file) {
+      const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+
+      if (!allowedImageTypes.includes(file.mimetype)) {
+        throw new HttpException('Only images: jpg, jpeg, png, webp', 400);
+      }
+
+      if (user.profilePic) {
+        await this.uploadService.deleteFile(user.profilePic);
+      }
+
+      newProfilePic = await this.uploadService.uploadFile(file, 'images');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id },
+      data: {
+        name,
+        surname,
+        phonenumber,
+        email,
+        password,
+        profilePic: newProfilePic,
+      },
+    });
+
+    return {
+      msg: 'User updated',
+      user: updatedUser,
+    };
   }
 
   async login(LoginUserDto: LoginUserDto) {
