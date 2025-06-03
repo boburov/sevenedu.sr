@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, Headers, HttpException, Param, Patch, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, HttpException, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 
 @Controller('user')
 export class UserController {
@@ -13,7 +14,7 @@ export class UserController {
     return this.userService.allUser()
   }
 
-  // @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   @Patch('update/:id')
   @UseInterceptors(FileInterceptor('file'))
   UpdateUser(
@@ -31,11 +32,12 @@ export class UserController {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const userId = await this.userService.getUserIdFromToken(token);
+    const user = await this.userService.getUserIdFromToken(token);
 
-    return { userId };
+    return { user };
   }
-  // @UseGuards(JwtAuthGuard)
+
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
   async deleteUser(@Param('id') id: string) {
     return this.userService.deleteUser(id)

@@ -12,7 +12,7 @@ import { ConfigModule } from '@nestjs/config';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     JwtModule.register({
-      secret: 'KOTUNMUNKAMIU82YRW87EYH7A8FYHFIUAYS7FASF87AS7F78ATSF87ASITV87AJS9EHYF7AS89F7E9TAG7ASTURSIGMNIRASMZIERI96Y76Y979TSUNADEJUDASESKDUALSNU',
+      secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '7d' },
     })
     , PrismaModule, MailModule, UploadsModule],

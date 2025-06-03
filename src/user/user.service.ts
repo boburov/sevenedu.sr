@@ -78,8 +78,8 @@ export class UserService {
   async getUserIdFromToken(token: string) {
     try {
       const pureToken = token.replace(/^Bearer\s/, '');
-      const decoded = await this.jwt.verify(pureToken);
-      return decoded
+      const decoded = this.jwt.verify(pureToken, { secret: process.env.JWT_SECRET });
+      return decoded;
     } catch (error) {
       throw new HttpException('Yaroqsiz token', 401);
     }

@@ -8,6 +8,8 @@ import { VerifyCodeDto } from './dto/verify-code';
 import { LoginUserDto } from './dto/login-user.dto';
 import { UpdateUserDto } from 'src/user/dto/update-user.dto';
 import { UploadsService } from 'src/uploads/uploads.service';
+import { ConfigService } from '@nestjs/config';
+
 
 @Injectable()
 export class AuthService {
@@ -16,6 +18,7 @@ export class AuthService {
     private jwt: JwtService,
     private uploadService: UploadsService,
     private prisma: PrismaService,
+    private configService: ConfigService,
   ) { }
 
   generateAlphanumericId(length = 6): string {
@@ -157,5 +160,11 @@ export class AuthService {
     };
 
   }
+
+  async deleteAllUsers(): Promise<void> {
+    await this.prisma.user.deleteMany();
+  }
+
+ 
 
 }
