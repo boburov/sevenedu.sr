@@ -85,6 +85,10 @@ export class UserService {
     }
   }
 
+  async findByEmail(email: string) {
+    return await this.prisma.user.findFirst({ where: { email } });
+  }
+
   async deleteUser(id: string) {
     await this.prisma.user.delete({ where: { id } });
     return { msg: 'Deleted' };

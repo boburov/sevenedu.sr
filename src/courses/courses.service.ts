@@ -1,8 +1,11 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateCategoryCourseDto } from './dto/create-course-category.dto';
 import { UploadsService } from 'src/uploads/uploads.service';
 import { CreateLessonDto } from './dto/create-course.dot';
+import * as path from 'path';
+import * as fs from 'fs';
+import { UpdateCategoryDto } from './dto/update-course.dto';
 
 @Injectable()
 export class CoursesService {
@@ -11,27 +14,53 @@ export class CoursesService {
     private uploadsService: UploadsService
   ) { }
 
-  async createCategory(createCategory: CreateCategoryCourseDto, file: Express.Multer.File) {
-    const { title, shortName, goal, lessons } = createCategory;
+  async removeCategory(id: string) {
+    const category = await this.prisma.coursesCategory.findFirst({ where: { id } });
+    if (!category) throw new NotFoundException('Kategoriya topilmadi');
 
-    const course = await this.prisma.coursesCategory.findFirst({ where: { shortName } });
-    if (course) throw new HttpException('This Course Already Exists', 400);
+    const uploadsDir = path.resolve(process.cwd(), 'images');
+    const imageName = path.basename(category.thumbnail);
+    const filePath = path.join(uploadsDir, imageName);
 
-    const newFileUrl = await this.uploadsService.uploadFile(file, 'images');
+    const url = new URL(category.thumbnail);
+    const fileKey = url.pathname.substring(1);
 
-    const newCourseCategory = await this.prisma.coursesCategory.create({
+    const deleted = await this.uploadsService.deleteFile(fileKey);
+    if (!deleted) throw new HttpException('Rasmni o‘chirishda xatolik yuz berdi', 500);
+
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (err) {
+      console.error('Faylni o‘chirishda xatolik:', err.message);
+    }
+
+    await this.prisma.coursesCategory.delete({ where: { id } });
+    return { message: 'Kategoriya va rasm o‘chirildi' };
+  }
+
+  async createCategory(
+    dto: CreateCategoryCourseDto,
+    file: Express.Multer.File
+  ) {
+    const { title, shortName, goal } = dto;
+
+    const existing = await this.prisma.coursesCategory.findFirst({ where: { shortName } });
+    if (existing) throw new HttpException('Bu kategoriya allaqachon mavjud!', 400);
+
+    const uploadedThumbnail = await this.uploadsService.uploadFile(file, 'images');
+
+    const newCategory = await this.prisma.coursesCategory.create({
       data: {
         title,
-        goal,
         shortName,
-        thumbnail: newFileUrl,
-        lessons: {
-          create: []
-        }
+        goal,
+        thumbnail: uploadedThumbnail,
       },
     });
 
-    return newCourseCategory;
+    return newCategory;
   }
 
   async createCourse(createCourse: CreateLessonDto, id: string, file: Express.Multer.File) {
@@ -55,16 +84,37 @@ export class CoursesService {
   }
 
   async getcategory(id: string) {
-    const get = this.prisma.coursesCategory.findFirst({ where: { id } })
-    return get
+    const get = this.prisma.coursesCategory.findFirst({ where: { id } });
+    return get;
   }
+
+  async updateCategory(id: string, dto: UpdateCategoryDto, file?: Express.Multer.File) {
+    const existingCategory = await this.prisma.coursesCategory.findUnique({ where: { id } });
+    if (!existingCategory) throw new NotFoundException('Kategoriya topilmadi');
+
+    if (file) {
+      const oldUrl = existingCategory.thumbnail;
+      const oldKey = new URL(oldUrl).pathname.slice(1);
+      await this.uploadsService.deleteFile(oldKey);
+
+      const newThumbnailUrl = await this.uploadsService.uploadFile(file, 'images');
+      dto.thumbnail = newThumbnailUrl;
+    }
+
+    return this.prisma.coursesCategory.update({
+      where: { id },
+      data: { ...dto },
+    });
+  }
+
+
 
   async getAll() {
     const course = await this.prisma.coursesCategory.findMany({
       include: {
         lessons: true
       }
-    })
-    return course
+    });
+    return course;
   }
 }

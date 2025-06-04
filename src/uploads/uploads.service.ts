@@ -18,11 +18,17 @@ export class UploadsService {
   }
 
   async uploadFile(file: Express.Multer.File, folder: 'images' | 'videos') {
+    if (!file) {
+      throw new Error('File topilmadi. Iltimos, tekshiring!');
+    }
+
     const ext = path.extname(file.originalname);
     const filename = `${folder}/${Date.now()}${ext}`;
+    const bucket = this.configService.getOrThrow('AWS_BUCKET_NAME');
+    const region = this.configService.getOrThrow('AWS_REGION');
 
     const command = new PutObjectCommand({
-      Bucket: this.configService.get('AWS_BUCKET_NAME'),
+      Bucket: bucket,
       Key: filename,
       Body: file.buffer,
       ContentType: file.mimetype,
@@ -31,20 +37,24 @@ export class UploadsService {
 
     await this.s3.send(command);
 
-    return `https://${this.configService.get('AWS_BUCKET_NAME')}.s3.${this.configService.get('AWS_REGION')}.amazonaws.com/${filename}`;
+    return `https://${bucket}.s3.${region}.amazonaws.com/${filename}`;
   }
 
-  async deleteFile(fileUrl: string) {
-    const bucket = this.configService.get("AWS_BUCKET_NAME");
-    this.configService.get("AWS_REGION");
+  async deleteFile(key: string): Promise<boolean> {
+    try {
+      const bucket = this.configService.getOrThrow('AWS_BUCKET_NAME');
 
-    const key = fileUrl.split(`.amazonaws.com/`)[1];
+      const deleteCommand = new DeleteObjectCommand({
+        Bucket: bucket,
+        Key: key,
+      });
 
-    const command = new DeleteObjectCommand({
-      Bucket: bucket,
-      Key: key,
-    });
-
-    await this.s3.send(command);
+      await this.s3.send(deleteCommand);
+      return true;
+    } catch (error) {
+      console.error('S3 faylni o‘chirishda xatolik:', error.message);
+      return false;
+    }
   }
+
 }

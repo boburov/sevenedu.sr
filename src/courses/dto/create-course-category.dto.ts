@@ -1,4 +1,4 @@
-import { IsArray, IsString } from "class-validator"
+import { IsArray, IsOptional, IsString } from "class-validator"
 
 export class CreateCategoryCourseDto {
   @IsString()
@@ -11,8 +11,6 @@ export class CreateCategoryCourseDto {
   shortName: string
 
   @IsArray()
+  @IsOptional()
   lessons: []
-
-  @IsString()
-  thumbnail: string
 }

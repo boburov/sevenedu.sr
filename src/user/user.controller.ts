@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Headers, HttpException, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, HttpException, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -37,6 +37,20 @@ export class UserController {
     return { user };
   }
 
+  @Get('by-email')
+  async getUserByEmail(@Query('email') email: string) {
+    if (!email) {
+      throw new HttpException('Email kerak', 400);
+    }
+
+    const user = await this.userService.findByEmail(email);
+
+    if (!user) {
+      throw new HttpException('Foydalanuvchi topilmadi', 404);
+    }
+
+    return user;
+  }
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   async deleteUser(@Param('id') id: string) {
