@@ -6,38 +6,24 @@ import { CreateLessonDto } from './dto/create-course.dot';
 import * as path from 'path';
 import * as fs from 'fs';
 import { UpdateCategoryDto } from './dto/update-course.dto';
+import { UpdateLessonDto } from './dto/update-lesson.dto';
 
 @Injectable()
 export class CoursesService {
   constructor(
     private prisma: PrismaService,
-    private uploadsService: UploadsService
+    private uploadsService: UploadsService,
+    private uploadService: UploadsService
+
   ) { }
 
-  async removeCategory(id: string) {
-    const category = await this.prisma.coursesCategory.findFirst({ where: { id } });
-    if (!category) throw new NotFoundException('Kategoriya topilmadi');
-
-    const uploadsDir = path.resolve(process.cwd(), 'images');
-    const imageName = path.basename(category.thumbnail);
-    const filePath = path.join(uploadsDir, imageName);
-
-    const url = new URL(category.thumbnail);
-    const fileKey = url.pathname.substring(1);
-
-    const deleted = await this.uploadsService.deleteFile(fileKey);
-    if (!deleted) throw new HttpException('Rasmni o‘chirishda xatolik yuz berdi', 500);
-
-    try {
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+  async getAll() {
+    const course = await this.prisma.coursesCategory.findMany({
+      include: {
+        lessons: true
       }
-    } catch (err) {
-      console.error('Faylni o‘chirishda xatolik:', err.message);
-    }
-
-    await this.prisma.coursesCategory.delete({ where: { id } });
-    return { message: 'Kategoriya va rasm o‘chirildi' };
+    });
+    return course;
   }
 
   async createCategory(
@@ -84,7 +70,7 @@ export class CoursesService {
   }
 
   async getcategory(id: string) {
-    const get = this.prisma.coursesCategory.findFirst({ where: { id } });
+    const get = this.prisma.coursesCategory.findFirst({ where: { id }, include: { lessons: true } });
     return get;
   }
 
@@ -107,14 +93,55 @@ export class CoursesService {
     });
   }
 
+  async updateLesson(id: string, dto: UpdateLessonDto, file: Express.Multer.File) {
+    const existingLesson = await this.prisma.lessons.findUnique({ where: { id } });
+    if (!existingLesson) throw new NotFoundException('Dars topilmadi');
 
+    if (file) {
+      const oldUrl = existingLesson.videoUrl;
+      const oldKey = new URL(oldUrl).pathname.slice(1);
+      await this.uploadsService.deleteFile(oldKey);
 
-  async getAll() {
-    const course = await this.prisma.coursesCategory.findMany({
-      include: {
-        lessons: true
-      }
+      const newVideoUrl = await this.uploadsService.uploadFile(file, 'videos');
+      dto.videoUrl = newVideoUrl;
+    }
+
+    return this.prisma.lessons.update({
+      where: { id },
+      data: { ...dto },
     });
-    return course;
+  }
+
+
+  async deleteLesson(id: string) {
+    const lesson = await this.prisma.lessons.delete({ where: { id } })
+    this.uploadService.deleteFile(lesson.videoUrl)
+    return { msg: "lesson deleted" }
+  }
+
+  async removeCategory(id: string) {
+    const category = await this.prisma.coursesCategory.findFirst({ where: { id } });
+    if (!category) throw new NotFoundException('Kategoriya topilmadi');
+
+    const uploadsDir = path.resolve(process.cwd(), 'images');
+    const imageName = path.basename(category.thumbnail);
+    const filePath = path.join(uploadsDir, imageName);
+
+    const url = new URL(category.thumbnail);
+    const fileKey = url.pathname.substring(1);
+
+    const deleted = await this.uploadsService.deleteFile(fileKey);
+    if (!deleted) throw new HttpException('Rasmni o‘chirishda xatolik yuz berdi', 500);
+
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (err) {
+      console.error('Faylni o‘chirishda xatolik:', err.message);
+    }
+
+    await this.prisma.coursesCategory.delete({ where: { id } });
+    return { message: 'Kategoriya va rasm o‘chirildi' };
   }
 }

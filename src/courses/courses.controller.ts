@@ -4,10 +4,35 @@ import { CreateCategoryCourseDto } from './dto/create-course-category.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateLessonDto } from './dto/create-course.dot';
 import { UpdateCategoryDto } from './dto/update-course.dto';
+import { UpdateLessonDto } from './dto/update-lesson.dto';
 
 @Controller('courses')
 export class CoursesController {
-  constructor(private courseService: CoursesService) { }
+  constructor(private courseService: CoursesService,) { }
+
+  @Get('all')
+  async all() {
+    return this.courseService.getAll()
+  }
+
+  @Get('category/:id')
+  async getCategory(@Param('id') id: string) {
+    return this.courseService.getcategory(id)
+  }
+
+  @Patch('lessons/:id')
+  @UseInterceptors(FileInterceptor('video'))
+  async updateLesson(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: UpdateLessonDto,
+  ) {
+    if (typeof body.isDemo === 'string') {
+      body.isDemo = body.isDemo === 'true';
+    }
+
+    return this.courseService.updateLesson(id, body, file);
+  }
 
   @Post('create')
   @UseInterceptors(FileInterceptor('file'))
@@ -40,6 +65,12 @@ export class CoursesController {
     }
   }
 
+  @Delete("lesson/:id")
+  async deleteLEsson(@Param('id') id: string) {
+    return this.courseService.deleteLesson(id)
+  }
+
+
   @Patch('category/:id')
   @UseInterceptors(FileInterceptor('file'))
   async update(
@@ -50,14 +81,9 @@ export class CoursesController {
     return this.courseService.updateCategory(id, body, file);
   }
 
-
-  @Get('category/:id')
-  async getCategory(@Param('id') id: string) {
-    return this.courseService.getcategory(id)
+  @Delete("")
+  async DeletePublicAccessBlockCommand(@Param("id") id: string) {
+    this.courseService.deleteLesson(id)
   }
 
-  @Get('all')
-  async all() {
-    return this.courseService.getAll()
-  }
 }

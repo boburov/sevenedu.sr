@@ -6,7 +6,7 @@ import * as path from 'path';
 @Injectable()
 export class UploadsService {
   private s3: S3Client;
-
+  
   constructor(private configService: ConfigService) {
     this.s3 = new S3Client({
       region: this.configService.getOrThrow('AWS_REGION'),
