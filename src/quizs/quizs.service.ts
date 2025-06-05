@@ -23,7 +23,7 @@ export class QuizsService {
         option1,
         option2,
         option3,
-        currentOption: current,
+        currentOption: option1,
       },
     });
   }

@@ -21,7 +21,12 @@ export class CoursesService {
   async getAll() {
     const course = await this.prisma.coursesCategory.findMany({
       include: {
-        lessons: true
+        lessons: {
+          include: {
+            quizs: true,
+            dictonary: true
+          }
+        }
       }
     });
     return course;

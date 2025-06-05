@@ -10,9 +10,20 @@ import { CoursesModule } from './courses/courses.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { QuizsModule } from './quizs/quizs.module';
 import { QuessionsModule } from './quessions/quessions.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, UserModule, AuthModule, CoursesModule, UploadsModule, QuizsModule, QuessionsModule,],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
+    PrismaModule,
+    UserModule,
+    AuthModule,
+    CoursesModule,
+    UploadsModule,
+    QuizsModule,
+    QuessionsModule,
+  ],
   controllers: [AppController],
   providers: [AppService, MailService],
 })

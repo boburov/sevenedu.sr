@@ -1,16 +1,19 @@
 -- CreateTable
 CREATE TABLE "User" (
-    "id" TEXT NOT NULL,
     "name" TEXT,
     "surname" TEXT,
     "phonenumber" TEXT,
-    "profilePic" TEXT NOT NULL DEFAULT '',
-    "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
     "code" TEXT NOT NULL,
+    "codeExpiresAt" TIMESTAMP(3),
     "courses" TEXT[],
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "email" TEXT NOT NULL,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "coins" INTEGER NOT NULL DEFAULT 0,
+    "profilePic" TEXT NOT NULL DEFAULT '',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "isVerified" BOOLEAN NOT NULL DEFAULT false,
+    "id" TEXT NOT NULL,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -24,6 +27,14 @@ CREATE TABLE "CoursesCategory" (
     "goal" TEXT NOT NULL,
 
     CONSTRAINT "CoursesCategory_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Activity" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT,
+
+    CONSTRAINT "Activity_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -71,6 +82,9 @@ CREATE TABLE "Quizs" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- AddForeignKey
+ALTER TABLE "Activity" ADD CONSTRAINT "Activity_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Lessons" ADD CONSTRAINT "Lessons_coursesCategoryId_fkey" FOREIGN KEY ("coursesCategoryId") REFERENCES "CoursesCategory"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

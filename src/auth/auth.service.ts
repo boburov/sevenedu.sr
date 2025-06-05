@@ -8,8 +8,7 @@ import { VerifyCodeDto } from './dto/verify-code';
 import { LoginUserDto } from './dto/login-user.dto';
 import { UpdateUserDto } from 'src/user/dto/update-user.dto';
 import { UploadsService } from 'src/uploads/uploads.service';
-import { ConfigService } from '@nestjs/config';
-
+import { Cron, CronExpression } from '@nestjs/schedule'
 
 @Injectable()
 export class AuthService {
@@ -18,7 +17,6 @@ export class AuthService {
     private jwt: JwtService,
     private uploadService: UploadsService,
     private prisma: PrismaService,
-    private configService: ConfigService,
   ) { }
 
   generateAlphanumericId(length = 6): string {
@@ -30,8 +28,16 @@ export class AuthService {
     return result;
   }
 
-  generateRandomCode(): string {
-    return Math.random().toString(36).substring(2, 8).toUpperCase(); // masalan: "K1X3ZP"
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async cleanExpiredUsers() {
+    await this.prisma.user.deleteMany({
+      where: {
+        isVerified: false,
+        codeExpiresAt: {
+          lt: new Date(),
+        },
+      },
+    });
   }
 
   async register(dto: CreateUserDto) {
@@ -40,36 +46,56 @@ export class AuthService {
     const existingUser = await this.prisma.user.findUnique({ where: { email } });
     if (existingUser) throw new HttpException("Bu email allaqachon ro'yxatdan o'tgan", 400);
 
-    const code = this.generateRandomCode();
+    const code = this.generateAlphanumericId();
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await this.prisma.user.upsert({
-      where: { email },
-      update: { name, surname, phonenumber, email, code, password: hashedPassword },
-      create: { name, surname, phonenumber, email, code, password: hashedPassword }
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 10 * 60 * 1000);
+
+    const user = await this.prisma.user.create({
+      data: {
+        name,
+        surname,
+        phonenumber,
+        email,
+        code,
+        codeExpiresAt: expiresAt,
+        password: hashedPassword,
+        isVerified: false,
+      },
     });
 
     await this.mailService.sendVerificationCode(email, code);
 
-    const token = await this.jwt.sign({ id: user.id })
-
-    return { message: "Tasdiqlash kodi emailga yuborildi", token };
+    return { message: "Tasdiqlash kodi emailga yuborildi" };
   }
 
   async verify(verifyCode: VerifyCodeDto) {
-    const { code, email } = verifyCode
-    const find = await this.prisma.user.findFirst({ where: { email } })
-    if (!find) throw new HttpException(`Email not Found`, 404)
+    const { code, email } = verifyCode;
+    const user = await this.prisma.user.findUnique({ where: { email } });
 
-    const check = await find.code === code
-    if (!check) return { msg: "wrong code" }
+    if (!user) throw new HttpException(`Email not Found`, 404);
+    if (user.isVerified) throw new HttpException(`User already verified`, 400);
 
-    const token = await this.jwt.sign({ id: find.id })
+    if (user.codeExpiresAt && user.codeExpiresAt < new Date()) {
 
-    return {
-      msg: "userCreated",
-      token
+      await this.prisma.user.delete({ where: { email } });
+      throw new HttpException("Verification code expired, please register again", 400);
     }
+
+    if (user.code !== code) throw new HttpException("Wrong verification code", 400);
+
+    await this.prisma.user.update({
+      where: { email },
+      data: {
+        isVerified: true,
+        code: '',
+        codeExpiresAt: null,
+      },
+    });
+
+    const token = await this.jwt.sign({ id: user.id });
+    return { msg: "User verified", token };
   }
 
   async updateUser(
@@ -134,9 +160,14 @@ export class AuthService {
   async login(LoginUserDto: LoginUserDto) {
     const { name, phonenumber, email, password } = LoginUserDto
 
+
     const user = await this.prisma.user.findUnique({
       where: { email, name, phonenumber, },
     });
+
+    if (!user?.isVerified) {
+      throw new UnauthorizedException('Please verify your account first');
+    }
 
     if (!user) {
       throw new UnauthorizedException('Foydalanuvchi topilmadi');
@@ -161,10 +192,10 @@ export class AuthService {
 
   }
 
-  async deleteAllUsers(): Promise<void> {
+  async deleteAllUsers() {
     await this.prisma.user.deleteMany();
   }
 
- 
+
 
 }
