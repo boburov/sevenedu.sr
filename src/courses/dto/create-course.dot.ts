@@ -1,5 +1,5 @@
 import { Type } from "class-transformer"
-import { IsBoolean, IsString } from "class-validator"
+import { IsBoolean, IsOptional, IsString } from "class-validator"
 
 export class CreateLessonDto {
   @IsString()
@@ -8,5 +8,6 @@ export class CreateLessonDto {
   @IsBoolean()
   @Type(() => Boolean)
   isDemo: boolean
-
+  @IsOptional()
+  quzis?: []
 }

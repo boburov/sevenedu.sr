@@ -1,4 +1,17 @@
-import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Patch, Post, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpException,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Res,
+  UploadedFile,
+  UseInterceptors
+} from '@nestjs/common';
 import { CoursesService } from './courses.service';
 import { CreateCategoryCourseDto } from './dto/create-course-category.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -8,8 +21,10 @@ import { UpdateLessonDto } from './dto/update-lesson.dto';
 
 @Controller('courses')
 export class CoursesController {
+  // import other functions
   constructor(private courseService: CoursesService,) { }
 
+  // get request
   @Get('all')
   async all() {
     return this.courseService.getAll()
@@ -20,20 +35,14 @@ export class CoursesController {
     return this.courseService.getcategory(id)
   }
 
-  @Patch('lessons/:id')
-  @UseInterceptors(FileInterceptor('video'))
-  async updateLesson(
+  @Get('lessons/:id')
+  async getLessonById(
     @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File,
-    @Body() body: UpdateLessonDto,
   ) {
-    if (typeof body.isDemo === 'string') {
-      body.isDemo = body.isDemo === 'true';
-    }
-
-    return this.courseService.updateLesson(id, body, file);
+    return this.courseService.getLessonById(id);
   }
 
+  // post request
   @Post('create')
   @UseInterceptors(FileInterceptor('file'))
   createCategory(
@@ -55,22 +64,7 @@ export class CoursesController {
     return this.courseService.createCourse(body, id, file);
   }
 
-  @Delete(':id')
-  async deleteCategory(@Param('id') id: string, @Res() res: Response) {
-    try {
-      await this.courseService.removeCategory(id);
-      return { message: 'Kategoriya va rasm o‘chirildi' }
-    } catch (err) {
-      throw new HttpException(err.message, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  @Delete("lesson/:id")
-  async deleteLEsson(@Param('id') id: string) {
-    return this.courseService.deleteLesson(id)
-  }
-
-
+  // patch request
   @Patch('category/:id')
   @UseInterceptors(FileInterceptor('file'))
   async update(
@@ -81,9 +75,47 @@ export class CoursesController {
     return this.courseService.updateCategory(id, body, file);
   }
 
+  // delete request
   @Delete("")
   async DeletePublicAccessBlockCommand(@Param("id") id: string) {
     this.courseService.deleteLesson(id)
   }
 
+  @Patch('lessons/:id')
+  @UseInterceptors(FileInterceptor('video'))
+  async updateLesson(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+
+    if (typeof body.isDemo === 'string') {
+      body.isDemo = body.isDemo === 'true';
+    }
+
+
+    const dto: UpdateLessonDto = {
+      title: body.title,
+      videoUrl: body.videoUrl,
+      isDemo: body.isDemo,
+    };
+
+    return this.courseService.updateLesson(id, dto, file);
+  }
+
+
+  @Delete("lesson/:id")
+  async deleteLEsson(@Param('id') id: string) {
+    return this.courseService.deleteLesson(id)
+  }
+
+  @Delete(':id')
+  async deleteCategory(@Param('id') id: string, @Res() res: Response) {
+    try {
+      await this.courseService.removeCategory(id);
+      return { message: 'Kategoriya va rasm o‘chirildi' }
+    } catch (err) {
+      throw new HttpException(err.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
 }

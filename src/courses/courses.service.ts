@@ -17,6 +17,7 @@ export class CoursesService {
 
   ) { }
 
+  // get request
   async getAll() {
     const course = await this.prisma.coursesCategory.findMany({
       include: {
@@ -26,6 +27,18 @@ export class CoursesService {
     return course;
   }
 
+  async getLessonById(id: string) {
+    const lesson = await this.prisma.lessons.findFirst({ where: { id, }, include: { quizs: true, dictonary: true } })
+    return lesson
+  }
+
+  async getcategory(id: string) {
+    const get = this.prisma.coursesCategory.findFirst({ where: { id }, include: { lessons: true } });
+    return get;
+  }
+
+
+  // create request
   async createCategory(
     dto: CreateCategoryCourseDto,
     file: Express.Multer.File
@@ -69,11 +82,7 @@ export class CoursesService {
     return newCourse;
   }
 
-  async getcategory(id: string) {
-    const get = this.prisma.coursesCategory.findFirst({ where: { id }, include: { lessons: true } });
-    return get;
-  }
-
+  // update request
   async updateCategory(id: string, dto: UpdateCategoryDto, file?: Express.Multer.File) {
     const existingCategory = await this.prisma.coursesCategory.findUnique({ where: { id } });
     if (!existingCategory) throw new NotFoundException('Kategoriya topilmadi');
@@ -93,26 +102,40 @@ export class CoursesService {
     });
   }
 
-  async updateLesson(id: string, dto: UpdateLessonDto, file: Express.Multer.File) {
+  async updateLesson(id: string, dto: UpdateLessonDto, file?: Express.Multer.File) {
     const existingLesson = await this.prisma.lessons.findUnique({ where: { id } });
-    if (!existingLesson) throw new NotFoundException('Dars topilmadi');
+
+    if (!existingLesson) {
+      throw new NotFoundException('Dars topilmadi');
+    }
 
     if (file) {
       const oldUrl = existingLesson.videoUrl;
-      const oldKey = new URL(oldUrl).pathname.slice(1);
-      await this.uploadsService.deleteFile(oldKey);
 
+      if (oldUrl) {
+        const oldKey = new URL(oldUrl).pathname.slice(1);
+        await this.uploadsService.deleteFile(oldKey);
+
+      }
       const newVideoUrl = await this.uploadsService.uploadFile(file, 'videos');
       dto.videoUrl = newVideoUrl;
+
+    }
+
+    if (typeof dto.isDemo === 'string') {
+      dto.isDemo = dto.isDemo === 'true';
     }
 
     return this.prisma.lessons.update({
       where: { id },
-      data: { ...dto },
+      data: {
+        ...dto,
+      },
     });
   }
 
 
+  //delete request 
   async deleteLesson(id: string) {
     const lesson = await this.prisma.lessons.delete({ where: { id } })
     this.uploadService.deleteFile(lesson.videoUrl)
