@@ -75,15 +75,13 @@ export class UserService {
     };
   }
 
-  async getUserIdFromToken(token: string) {
-    try {
-      const pureToken = token.replace(/^Bearer\s/, '');
-      const decoded = this.jwt.verify(pureToken, { secret: process.env.JWT_SECRET });
-      return decoded;
-    } catch (error) {
-      throw new HttpException('Yaroqsiz token', 401);
-    }
+
+  async getUserById(id: string) {
+    return this.prisma.user.findUnique({
+      where: { id },
+    });
   }
+
 
   async findByEmail(email: string) {
     return await this.prisma.user.findFirst({ where: { email } });

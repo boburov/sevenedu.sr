@@ -28,7 +28,7 @@ export class AuthService {
     return result;
   }
 
-  @Cron(CronExpression.EVERY_10_MINUTES)
+  @Cron(CronExpression.EVERY_5_MINUTES)
   async cleanExpiredUsers() {
     await this.prisma.user.deleteMany({
       where: {
@@ -39,6 +39,37 @@ export class AuthService {
       },
     });
   }
+
+
+  async getUserProfileFromToken(token: string) {
+    try {
+      const pureToken = token.replace(/^Bearer\s/, '');
+      const decoded = this.jwt.verify(pureToken, { secret: process.env.JWT_SECRET });
+
+      const user = await this.prisma.user.findUnique({
+        where: { id: decoded.sub },
+        select: {
+          id: true,
+          name: true,
+          surname: true,
+          email: true,
+          phonenumber: true,
+          profilePic: true,
+          createdAt: true,
+        },
+      });
+
+      if (!user) {
+        throw new HttpException('Foydalanuvchi topilmadi', 404);
+      }
+
+      return user;
+
+    } catch (error) {
+      throw new HttpException('Token yaroqsiz yoki foydalanuvchi topilmadi', 401);
+    }
+  }
+
 
   async register(dto: CreateUserDto) {
     const { email, password, name, surname, phonenumber } = dto;
@@ -67,7 +98,12 @@ export class AuthService {
 
     await this.mailService.sendVerificationCode(email, code);
 
-    return { message: "Tasdiqlash kodi emailga yuborildi" };
+    const payload = {
+      sub: user.id,
+      email: user.email,
+    };
+
+    return { token: this.jwt.sign(payload) };
   }
 
   async verify(verifyCode: VerifyCodeDto) {
@@ -191,6 +227,7 @@ export class AuthService {
     };
 
   }
+
 
   async deleteAllUsers() {
     await this.prisma.user.deleteMany();

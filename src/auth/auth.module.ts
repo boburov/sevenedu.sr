@@ -7,6 +7,8 @@ import { MailModule } from 'src/mail/mail.module';
 import { UserService } from 'src/user/user.service';
 import { UploadsModule } from 'src/uploads/uploads.module';
 import { ConfigModule } from '@nestjs/config';
+import { JwtStrategy } from 'src/guard/jwt.strategy';
+import { UserModule } from 'src/user/user.module';
 
 @Module({
   imports: [
@@ -15,8 +17,8 @@ import { ConfigModule } from '@nestjs/config';
       secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '7d' },
     })
-    , PrismaModule, MailModule, UploadsModule],
+    , PrismaModule, MailModule, UploadsModule, UserModule],
   controllers: [AuthController],
-  providers: [AuthService, UserService]
+  providers: [AuthService, UserService, JwtStrategy]
 })
 export class AuthModule { }

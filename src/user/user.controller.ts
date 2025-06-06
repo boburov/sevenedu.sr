@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Headers, HttpException, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, HttpException, Param, Patch, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -8,7 +8,6 @@ import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 export class UserController {
   constructor(private readonly userService: UserService) { }
 
-  // @UseGuards(JwtAuthGuard)
   @Get('all')
   async allUser() {
     return this.userService.allUser()
@@ -25,17 +24,12 @@ export class UserController {
     return this.userService.updateUser(id, updateUserDto, file, 'images');
   }
 
-  @Get('me')
-  async getMe(@Headers('authorization') authHeader: string) {
-    if (!authHeader) {
-      throw new HttpException('Token yo‘q', 401);
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const user = await this.userService.getUserIdFromToken(token);
-
-    return { user };
+  // @UseGuards(JwtAuthGuard)
+  @Get(':id')
+  async getUserById(@Param('id') id: string) {
+    return this.userService.getUserById(id);
   }
+
 
   @Get('by-email')
   async getUserByEmail(@Query('email') email: string) {
@@ -51,6 +45,7 @@ export class UserController {
 
     return user;
   }
+
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   async deleteUser(@Param('id') id: string) {
