@@ -2,13 +2,12 @@ import { HttpException, Injectable, UnauthorizedException } from '@nestjs/common
 import { CreateUserDto } from './dto/create-auth.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt'
+import * as bcrypt from 'bcrypt';
 import { MailService } from 'src/mail/mail.service';
 import { VerifyCodeDto } from './dto/verify-code';
 import { LoginUserDto } from './dto/login-user.dto';
-import { UpdateUserDto } from 'src/user/dto/update-user.dto';
 import { UploadsService } from 'src/uploads/uploads.service';
-import { Cron, CronExpression } from '@nestjs/schedule'
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class AuthService {
@@ -40,37 +39,6 @@ export class AuthService {
     });
   }
 
-
-  async getUserProfileFromToken(token: string) {
-    try {
-      const pureToken = token.replace(/^Bearer\s/, '');
-      const decoded = this.jwt.verify(pureToken, { secret: process.env.JWT_SECRET });
-
-      const user = await this.prisma.user.findUnique({
-        where: { id: decoded.sub },
-        select: {
-          id: true,
-          name: true,
-          surname: true,
-          email: true,
-          phonenumber: true,
-          profilePic: true,
-          createdAt: true,
-        },
-      });
-
-      if (!user) {
-        throw new HttpException('Foydalanuvchi topilmadi', 404);
-      }
-
-      return user;
-
-    } catch (error) {
-      throw new HttpException('Token yaroqsiz yoki foydalanuvchi topilmadi', 401);
-    }
-  }
-
-
   async register(dto: CreateUserDto) {
     const { email, password, name, surname, phonenumber } = dto;
 
@@ -98,12 +66,9 @@ export class AuthService {
 
     await this.mailService.sendVerificationCode(email, code);
 
-    const payload = {
-      sub: user.id,
-      email: user.email,
-    };
-
+    const payload = { sub: user.id, email: user.email };
     return { token: this.jwt.sign(payload) };
+
   }
 
   async verify(verifyCode: VerifyCodeDto) {
@@ -114,7 +79,6 @@ export class AuthService {
     if (user.isVerified) throw new HttpException(`User already verified`, 400);
 
     if (user.codeExpiresAt && user.codeExpiresAt < new Date()) {
-
       await this.prisma.user.delete({ where: { email } });
       throw new HttpException("Verification code expired, please register again", 400);
     }
@@ -130,109 +94,40 @@ export class AuthService {
       },
     });
 
-    const token = await this.jwt.sign({ id: user.id });
-    return { msg: "User verified", token };
+    const token = await this.jwt.signAsync({
+      sub: user.id,
+      email: user.email,
+    });
+
+    return { msg: "User verified", token, user };
   }
 
-  async updateUser(
-    id: string,
-    updateUser: UpdateUserDto,
-    file: Express.Multer.File,
-    type: string,
-  ) {
-    if (!updateUser) {
-      throw new HttpException('Body kiritilmagan', 400);
-    }
+  async login(loginDto: LoginUserDto) {
+    const { email, password } = loginDto;
 
-    const { name, surname, phonenumber, email, password } = updateUser;
-
-    const user = await this.prisma.user.findFirst({ where: { id } });
-    if (!user) {
-      throw new HttpException('User Not Found', 404);
-    }
-
-    const findEmail = await this.prisma.user.findFirst({
-      where: { email, NOT: { id } },
-    });
-
-    if (findEmail) {
-      throw new HttpException(`You can't use this email`, 400);
-    }
-
-    let newProfilePic = user.profilePic;
-
-    if (file) {
-      const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-
-      if (!allowedImageTypes.includes(file.mimetype)) {
-        throw new HttpException('Only images: jpg, jpeg, png, webp', 400);
-      }
-
-      if (user.profilePic) {
-        await this.uploadService.deleteFile(user.profilePic);
-      }
-
-      newProfilePic = await this.uploadService.uploadFile(file, 'images');
-    }
-
-    const updatedUser = await this.prisma.user.update({
-      where: { id },
-      data: {
-        name,
-        surname,
-        phonenumber,
-        email,
-        password,
-        profilePic: newProfilePic,
-      },
-    });
-
-    return {
-      msg: 'User updated',
-      user: updatedUser,
-    };
-  }
-
-  async login(LoginUserDto: LoginUserDto) {
-    const { name, phonenumber, email, password } = LoginUserDto
-
-
-    const user = await this.prisma.user.findUnique({
-      where: { email, name, phonenumber, },
-    });
-
-    if (!user?.isVerified) {
-      throw new UnauthorizedException('Please verify your account first');
-    }
+    const user = await this.prisma.user.findFirst({ where: { email } });
 
     if (!user) {
-      throw new UnauthorizedException('Foydalanuvchi topilmadi');
+      throw new UnauthorizedException("Bunday foydalanuvchi topilmadi");
     }
 
     const isPasswordMatch = await bcrypt.compare(password, user.password);
-
     if (!isPasswordMatch) {
-      throw new UnauthorizedException('Noto‘g‘ri parol');
+      throw new UnauthorizedException("Parol noto‘g‘ri");
     }
 
     const payload = { sub: user.id, email: user.email };
-    const token = await this.jwt.signAsync(payload);
-
     return {
-      access_token: token,
-      user: {
-        id: user.id,
-        email: user.email,
+      token: this.jwt.sign(payload),
+      checkId: {
+        userID: user.id,
+        username: user.name,
       },
     };
-
   }
-
 
   async deleteAllUsers() {
     await this.prisma.user.deleteMany();
+    return { msg: 'All users deleted' };
   }
-
-
-
 }

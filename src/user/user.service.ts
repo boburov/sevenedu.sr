@@ -2,13 +2,12 @@ import { HttpException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UploadsService } from 'src/uploads/uploads.service';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
   constructor(
     private prisma: PrismaService,
-    private jwt: JwtService,
     private uploadService: UploadsService,
   ) { }
 
@@ -28,7 +27,7 @@ export class UserService {
 
     const { name, surname, phonenumber, email, password } = updateUser;
 
-    const user = await this.prisma.user.findFirst({ where: { id } });
+    const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) {
       throw new HttpException('User Not Found', 404);
     }
@@ -57,6 +56,12 @@ export class UserService {
       newProfilePic = await this.uploadService.uploadFile(file, 'images');
     }
 
+    // Agar parol yangilanayotgan bo'lsa, uni hash qilamiz
+    let hashedPassword = user.password;
+    if (password) {
+      hashedPassword = await bcrypt.hash(password, 10);
+    }
+
     const updatedUser = await this.prisma.user.update({
       where: { id },
       data: {
@@ -64,7 +69,7 @@ export class UserService {
         surname,
         phonenumber,
         email,
-        password,
+        password: hashedPassword,
         profilePic: newProfilePic,
       },
     });
@@ -75,16 +80,57 @@ export class UserService {
     };
   }
 
-
   async getUserById(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
     });
   }
+  async updateProfilePic(id: string, file: Express.Multer.File) {
+    const imageUrl = await this.uploadService.uploadFile(file, 'images');
 
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        profilePic: imageUrl,
+      },
+    });
+  }
+
+  async deleteProfilePic(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    if (user.profilePic) {
+      await this.uploadService.deleteFile(user.profilePic); // Agar sizda deletePublicFile method mavjud bo‘lsa
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        profilePic: "",
+      },
+    });
+  }
 
   async findByEmail(email: string) {
-    return await this.prisma.user.findFirst({ where: { email } });
+    return this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        name: true,
+        courses: true,
+        coins: true,
+        email: true,
+        phonenumber: true,
+        profilePic: true,
+        code: true,
+      },
+    });
   }
 
   async deleteUser(id: string) {
