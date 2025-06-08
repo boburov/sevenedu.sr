@@ -18,8 +18,6 @@ export class UserService {
   async updateUser(
     id: string,
     updateUser: UpdateUserDto,
-    file: Express.Multer.File,
-    type: string,
   ) {
     if (!updateUser) {
       throw new HttpException('Body kiritilmagan', 400);
@@ -32,31 +30,17 @@ export class UserService {
       throw new HttpException('User Not Found', 404);
     }
 
-    const findEmail = await this.prisma.user.findFirst({
-      where: { email, NOT: { id } },
-    });
+    if (email && email !== user.email) {
+      const existingEmail = await this.prisma.user.findFirst({
+        where: { email },
+      });
 
-    if (findEmail) {
-      throw new HttpException(`You can't use this email`, 400);
+      if (existingEmail) {
+        throw new HttpException(`Bu email allaqachon ishlatilmoqda`, 400);
+      }
     }
 
-    let newProfilePic = user.profilePic;
 
-    if (file) {
-      const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-
-      if (!allowedImageTypes.includes(file.mimetype)) {
-        throw new HttpException('Only images: jpg, jpeg, png, webp', 400);
-      }
-
-      if (user.profilePic) {
-        await this.uploadService.deleteFile(user.profilePic);
-      }
-
-      newProfilePic = await this.uploadService.uploadFile(file, 'images');
-    }
-
-    // Agar parol yangilanayotgan bo'lsa, uni hash qilamiz
     let hashedPassword = user.password;
     if (password) {
       hashedPassword = await bcrypt.hash(password, 10);
@@ -70,12 +54,11 @@ export class UserService {
         phonenumber,
         email,
         password: hashedPassword,
-        profilePic: newProfilePic,
       },
     });
 
     return {
-      msg: 'User updated',
+      msg: 'User yangilandi',
       user: updatedUser,
     };
   }
@@ -85,6 +68,7 @@ export class UserService {
       where: { id },
     });
   }
+
   async updateProfilePic(id: string, file: Express.Multer.File) {
     const imageUrl = await this.uploadService.uploadFile(file, 'images');
 
