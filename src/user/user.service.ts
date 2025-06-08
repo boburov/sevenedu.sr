@@ -12,7 +12,15 @@ export class UserService {
   ) { }
 
   async allUser() {
-    return await this.prisma.user.findMany({});
+    return await this.prisma.user.findMany({
+      include: {
+        notifications: {
+          include: {
+            notification: true
+          }
+        }
+      }
+    });
   }
 
   async updateUser(

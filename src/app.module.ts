@@ -11,6 +11,7 @@ import { UploadsModule } from './uploads/uploads.module';
 import { QuizsModule } from './quizs/quizs.module';
 import { QuessionsModule } from './quessions/quessions.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     UploadsModule,
     QuizsModule,
     QuessionsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService, MailService],
