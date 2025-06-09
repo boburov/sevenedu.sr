@@ -8,6 +8,7 @@ export class CreateLessonDto {
   @IsBoolean()
   @Type(() => Boolean)
   isDemo: boolean
+  
   @IsOptional()
   quzis?: []
 }

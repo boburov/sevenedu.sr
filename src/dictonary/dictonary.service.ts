@@ -7,6 +7,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class DictonaryService {
 
   constructor(private prisma: PrismaService,) { }
+
   async create(createDictonaryDto: CreateDictonaryDto, id: string) {
     const { word, translated } = createDictonaryDto
     const find = await this.prisma.dictonary.findFirst({ where: { word } })

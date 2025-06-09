@@ -12,6 +12,7 @@ import { QuizsModule } from './quizs/quizs.module';
 import { QuessionsModule } from './quessions/quessions.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationsModule } from './notifications/notifications.module';
+import { DictonaryModule } from './dictonary/dictonary.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     UploadsModule,
     QuizsModule,
     QuessionsModule,
+    DictonaryModule,
     NotificationsModule,
   ],
   controllers: [AppController],
