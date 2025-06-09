@@ -21,10 +21,8 @@ import { UpdateLessonDto } from './dto/update-lesson.dto';
 
 @Controller('courses')
 export class CoursesController {
-  // import other functions
   constructor(private courseService: CoursesService,) { }
 
-  // get request
   @Get('all')
   async all() {
     return this.courseService.getAll()
@@ -42,7 +40,6 @@ export class CoursesController {
     return this.courseService.getLessonById(id);
   }
 
-  // post request
   @Post('create')
   @UseInterceptors(FileInterceptor('file'))
   createCategory(
@@ -64,7 +61,6 @@ export class CoursesController {
     return this.courseService.createCourse(body, id, file);
   }
 
-  // patch request
   @Patch('category/:id')
   @UseInterceptors(FileInterceptor('file'))
   async update(
@@ -75,7 +71,6 @@ export class CoursesController {
     return this.courseService.updateCategory(id, body, file);
   }
 
-  // delete request
   @Delete("")
   async DeletePublicAccessBlockCommand(@Param("id") id: string) {
     this.courseService.deleteLesson(id)

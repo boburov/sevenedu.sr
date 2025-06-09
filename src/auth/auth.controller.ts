@@ -6,6 +6,7 @@ import { CreateUserDto } from './dto/create-auth.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { AuthGuard } from '@nestjs/passport';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { ForgotPasswordDto } from './dto/forgot-psw.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -57,6 +58,12 @@ export class AuthController {
   async login(@Body() login: LoginUserDto) {
     return this.authService.login(login);
   }
+
+  @Post('forgot-password')
+  async forgotPassword(@Body() body: ForgotPasswordDto) {
+    return await this.authService.forgotPassword(body.email);
+  }
+
 
   @Delete('all')
   async deleteAll() {

@@ -1,32 +1,19 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UploadsService } from 'src/uploads/uploads.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
+import { MailService } from 'src/mail/mail.service';
 
 @Injectable()
 export class UserService {
   constructor(
     private prisma: PrismaService,
     private uploadService: UploadsService,
+    private mailService: MailService,
   ) { }
 
-  async allUser() {
-    return await this.prisma.user.findMany({
-      include: {
-        notifications: {
-          include: {
-            notification: true
-          }
-        }
-      }
-    });
-  }
-
-  async updateUser(
-    id: string,
-    updateUser: UpdateUserDto,
-  ) {
+  async updateUser(id: string, updateUser: UpdateUserDto) {
     if (!updateUser) {
       throw new HttpException('Body kiritilmagan', 400);
     }
@@ -35,21 +22,18 @@ export class UserService {
 
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) {
-      throw new HttpException('User Not Found', 404);
+      throw new HttpException('Foydalanuvchi topilmadi', 404);
     }
 
     if (email && email !== user.email) {
-      const existingEmail = await this.prisma.user.findFirst({
-        where: { email },
-      });
-
+      const existingEmail = await this.prisma.user.findFirst({ where: { email } });
       if (existingEmail) {
-        throw new HttpException(`Bu email allaqachon ishlatilmoqda`, 400);
+        throw new HttpException('Bu email allaqachon ishlatilmoqda', 400);
       }
     }
 
-
     let hashedPassword = user.password;
+
     if (password) {
       hashedPassword = await bcrypt.hash(password, 10);
     }
@@ -65,11 +49,53 @@ export class UserService {
       },
     });
 
+    const { password: _password, ...userWithoutPassword } = updatedUser;
+
     return {
       msg: 'User yangilandi',
-      user: updatedUser,
+      user: userWithoutPassword,
     };
   }
+
+
+  async allUser() {
+    return await this.prisma.user.findMany({
+      include: {
+        notifications: {
+          include: {
+            notification: true
+          }
+        }
+      }
+    });
+  }
+
+  async assignCourse(email: string, courseId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Foydalanuvchi topilmadi');
+    }
+
+    if (user.courses.includes(courseId)) {
+      return { message: 'Bu kurs allaqachon foydalanuvchida mavjud' };
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { email },
+      data: {
+        courses: {
+          push: courseId,
+        },
+      },
+    });
+
+    return { message: 'Kurs foydalanuvchiga qo‘shildi', user: updatedUser };
+  }
+
+
 
   async getUserById(id: string) {
     return this.prisma.user.findUnique({
@@ -181,5 +207,5 @@ export class UserService {
     };
   }
 
-  
+
 }

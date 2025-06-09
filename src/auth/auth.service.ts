@@ -39,6 +39,27 @@ export class AuthService {
     });
   }
 
+  async forgotPassword(email: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      throw new HttpException('Foydalanuvchi topilmadi', 404);
+    }
+
+    const newPassword = Math.random().toString(36).slice(-8);
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { email },
+      data: { password: hashedPassword },
+    });
+
+    await this.mailService.sendVerificationCode(email, `Yangi parolingiz: ${newPassword}`);
+
+    return { msg: 'Yangi parol emailga yuborildi' };
+  }
+
+
   async register(dto: CreateUserDto) {
     const { email, password, name, surname, phonenumber } = dto;
 
