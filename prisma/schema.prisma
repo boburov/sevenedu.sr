@@ -16,7 +16,6 @@ model User {
   code              String
   codeExpiresAt     DateTime?
   courses           String[]
-  activity          Activity[]
   email             String                  @unique
   updatedAt         DateTime                @updatedAt
   coins             Int                     @default(0)
@@ -24,6 +23,10 @@ model User {
   createdAt         DateTime                @default(now())
   isVerified        Boolean                 @default(false)
   id                String                  @id @default(uuid())
+  lessonActivity    LessonActivity[]
+  quizProgress      QuizProgress[]
+  vocabularyProgras VocabularyProgress[]
+  gifts             UserGift[]
   notifications     NotificationRecipient[]
   notificationsRead NotificationRead[]
 }
@@ -64,7 +67,7 @@ model NotificationRead {
   user         User         @relation(fields: [userId], references: [id])
   notification Notification @relation(fields: [notificationId], references: [id])
 
-  @@unique([userId, notificationId]) // bitta user har bir notificationni faqat bir marta o‘qigan bo‘lishi mumkin
+  @@unique([userId, notificationId])
 }
 
 model CoursesCategory {
@@ -77,22 +80,18 @@ model CoursesCategory {
   notifications Notification[]
 }
 
-model Activity {
-  id     String  @id @default(uuid())
-  User   User?   @relation(fields: [userId], references: [id])
-  userId String?
-}
-
 model Lessons {
-  id                String          @id @default(uuid())
+  id                String           @id @default(uuid())
   title             String
-  isDemo            Boolean         @default(false)
+  isDemo            Boolean          @default(false)
   videoUrl          String
   coursesCategoryId String
-  quessions         Quessions[]     @relation("Quessions")
-  dictonary         Dictonary[]     @relation("Dictonary")
-  quizs             Quizs[]         @relation("Quizs")
-  coursesCategory   CoursesCategory @relation("CategoryLessons", fields: [coursesCategoryId], references: [id])
+  quessions         Quessions[]      @relation("Quessions")
+  dictonary         Dictonary[]      @relation("Dictonary")
+  quizs             Quizs[]          @relation("Quizs")
+  coursesCategory   CoursesCategory  @relation("CategoryLessons", fields: [coursesCategoryId], references: [id])
+  LessonActivity    LessonActivity[]
+  QuizProgress      QuizProgress[]
 }
 
 model Quessions {
@@ -103,11 +102,12 @@ model Quessions {
 }
 
 model Dictonary {
-  id         String  @id @default(uuid())
-  word       String
-  translated String
-  Lessons    Lessons @relation("Dictonary", fields: [lessonsId], references: [id])
-  lessonsId  String
+  id                 String               @id @default(uuid())
+  word               String
+  translated         String
+  Lessons            Lessons              @relation("Dictonary", fields: [lessonsId], references: [id])
+  lessonsId          String
+  VocabularyProgress VocabularyProgress[]
 }
 
 model Quizs {
@@ -119,4 +119,53 @@ model Quizs {
   option3       String
   currentOption String
   Lessons       Lessons @relation("Quizs", fields: [lessonsId], references: [id])
+}
+
+model UserGift {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  reason    String
+  awardedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model LessonActivity {
+  id        String   @id @default(uuid())
+  userId    String
+  lessonsId String
+  watchedAt DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id])
+  lesson Lessons @relation(fields: [lessonsId], references: [id])
+
+  @@unique([userId, lessonsId, watchedAt])
+}
+
+model QuizProgress {
+  id          String   @id @default(uuid())
+  userId      String
+  lessonsId   String
+  score       Int
+  total       Int
+  passed      Boolean
+  attemptedAt DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id])
+  lesson Lessons @relation(fields: [lessonsId], references: [id])
+
+  @@unique([userId, lessonsId])
+}
+
+model VocabularyProgress {
+  id          String   @id @default(uuid())
+  userId      String
+  dictonaryId String
+  learnedAt   DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id])
+  dictonary Dictonary @relation(fields: [dictonaryId], references: [id])
+
+  @@unique([userId, dictonaryId])
 }

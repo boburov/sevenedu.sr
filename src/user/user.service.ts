@@ -74,6 +74,13 @@ export class UserService {
   async getUserById(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
+      include: {
+        notifications: {
+          include: {
+            notification: true,
+          },
+        },
+      },
     });
   }
 
@@ -129,4 +136,50 @@ export class UserService {
     await this.prisma.user.delete({ where: { id } });
     return { msg: 'Deleted' };
   }
+
+  async getLessonStats(userId: string) {
+    const totalLessons = await this.prisma.lessons.count();
+    const completedLessons = await this.prisma.lessonActivity.count({
+      where: { userId },
+    });
+
+    return {
+      totalLessons,
+      completedLessons,
+      completionRate: Number(((completedLessons / totalLessons) * 100).toFixed(2)),
+    };
+  }
+
+  async getVocabularyStats(userId: string) {
+    const totalWords = await this.prisma.dictonary.count();
+    const learnedWords = await this.prisma.vocabularyProgress.count({
+      where: { userId },
+    });
+
+    return {
+      totalWords,
+      learnedWords,
+      progressRate: Number(((learnedWords / totalWords) * 100).toFixed(2)),
+    };
+  }
+
+  async getQuizStats(userId: string) {
+    const allQuizzes = await this.prisma.quizs.findMany();
+    const userProgress = await this.prisma.quizProgress.findMany({
+      where: { userId },
+    });
+
+    const total = allQuizzes.length;
+    const attempted = userProgress.length;
+    const correct = userProgress.filter(p => p.passed).length;
+
+    return {
+      total,
+      attempted,
+      passed: correct,
+      passRate: Number(((correct / total) * 100).toFixed(2)),
+    };
+  }
+
+  
 }

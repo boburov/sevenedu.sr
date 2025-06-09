@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { NotificationRecipientDto } from './dto/update-ntf.dto';
 
 @Injectable()
 export class NotificationsService {
@@ -126,6 +127,14 @@ export class NotificationsService {
 
     return updatedNotification;
   }
+
+  async updateNotificationRecipient(id: string, dto: Partial<NotificationRecipientDto>) {
+    return this.prisma.notificationRecipient.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
 
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
   async deleteOldNotifications() {

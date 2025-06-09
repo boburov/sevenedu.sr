@@ -7,9 +7,11 @@ import {
   Param,
   Body,
   Query,
+  Req,
 } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
+import { NotificationRecipientDto } from './dto/update-ntf.dto';
 
 @Controller('notifications')
 export class NotificationsController {
@@ -25,7 +27,7 @@ export class NotificationsController {
     return await this.notificationsService.getNotificationById(id);
   }
 
-  @Post()
+  @Post('create')
   async create(@Body() dto: CreateNotificationDto & {
     userId?: string;
     courseId?: string;
@@ -48,8 +50,8 @@ export class NotificationsController {
   }
 
   @Put(':id')
-  async update(@Param('id') id: string, @Body() dto: Partial<CreateNotificationDto>) {
-    return await this.notificationsService.updateNotification(id, dto);
+  async updateNotification(@Param('id') id: string, @Body() dto: Partial<NotificationRecipientDto>) {
+    return await this.notificationsService.updateNotificationRecipient(id, dto);
   }
 
 }

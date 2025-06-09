@@ -5,11 +5,13 @@ import { VerifyCodeDto } from './dto/verify-code';
 import { CreateUserDto } from './dto/create-auth.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { AuthGuard } from '@nestjs/passport';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private authService: AuthService,
+    private prisma: PrismaService
   ) { }
 
   @Post('register')
@@ -29,7 +31,21 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @Get('me')
   async getMe(@Req() req) {
-    return req.user;
+    const userId = req.user.id
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        notifications: {
+          include: {
+            notification: true,
+          },
+        },
+        notificationsRead: true,
+      },
+    });
+
+    return user
   }
 
   @Post('verify')
