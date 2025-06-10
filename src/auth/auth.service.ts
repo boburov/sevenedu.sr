@@ -137,6 +137,15 @@ export class AuthService {
       throw new UnauthorizedException("Parol noto‘g‘ri");
     }
 
+    if (!user.isVerified) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          isVerified: true,
+        },
+      });
+    }
+
     const payload = { sub: user.id, email: user.email };
     return {
       token: this.jwt.sign(payload),

@@ -95,8 +95,6 @@ export class UserService {
     return { message: 'Kurs foydalanuvchiga qo‘shildi', user: updatedUser };
   }
 
-
-
   async getUserById(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
