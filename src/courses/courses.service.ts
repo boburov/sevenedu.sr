@@ -17,7 +17,7 @@ export class CoursesService {
 
   ) { }
 
-  // get request
+
   async getAll() {
     const course = await this.prisma.coursesCategory.findMany({
       include: {
@@ -43,7 +43,7 @@ export class CoursesService {
   }
 
 
-  // create request
+
   async createCategory(
     dto: CreateCategoryCourseDto,
     file: Express.Multer.File
@@ -87,7 +87,7 @@ export class CoursesService {
     return newCourse;
   }
 
-  // update request
+
   async updateCategory(id: string, dto: UpdateCategoryDto, file?: Express.Multer.File) {
     const existingCategory = await this.prisma.coursesCategory.findUnique({ where: { id } });
     if (!existingCategory) throw new NotFoundException('Kategoriya topilmadi');
@@ -140,7 +140,7 @@ export class CoursesService {
   }
 
 
-  //delete request 
+
   async deleteLesson(id: string) {
     const lesson = await this.prisma.lessons.delete({ where: { id } })
     this.uploadService.deleteFile(lesson.videoUrl)

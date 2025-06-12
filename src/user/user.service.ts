@@ -11,7 +11,7 @@ export class UserService {
     private prisma: PrismaService,
     private uploadService: UploadsService,
     private mailService: MailService,
-  ) { }
+  ) {}
 
   async updateUser(id: string, updateUser: UpdateUserDto) {
     if (!updateUser) {
@@ -33,7 +33,6 @@ export class UserService {
     }
 
     let hashedPassword = user.password;
-
     if (password) {
       hashedPassword = await bcrypt.hash(password, 10);
     }
@@ -50,23 +49,21 @@ export class UserService {
     });
 
     const { password: _password, ...userWithoutPassword } = updatedUser;
-
     return {
       msg: 'User yangilandi',
       user: userWithoutPassword,
     };
   }
 
-
   async allUser() {
     return await this.prisma.user.findMany({
       include: {
         notifications: {
           include: {
-            notification: true
-          }
-        }
-      }
+            notification: true,
+          },
+        },
+      },
     });
   }
 
@@ -74,26 +71,31 @@ export class UserService {
     const user = await this.prisma.user.findUnique({
       where: { email },
     });
-
+  
     if (!user) {
       throw new NotFoundException('Foydalanuvchi topilmadi');
     }
-
-    if (user.courses.includes(courseId)) {
-      return { message: 'Bu kurs allaqachon foydalanuvchida mavjud' };
-    }
-
-    const updatedUser = await this.prisma.user.update({
-      where: { email },
-      data: {
-        courses: {
-          push: courseId,
-        },
+  
+    const exists = await this.prisma.userCourse.findFirst({
+      where: {
+        userId: user.id,
+        courseId,
       },
     });
-
-    return { message: 'Kurs foydalanuvchiga qo‘shildi', user: updatedUser };
-  }
+  
+    if (exists) {
+      return { message: 'Bu kurs allaqachon foydalanuvchida mavjud' };
+    }
+  
+    await this.prisma.userCourse.create({
+      data: {
+        userId: user.id,
+        courseId,
+      },
+    });
+  
+    return { message: 'Kurs foydalanuvchiga qo‘shildi' };
+  }  
 
   async getUserById(id: string) {
     return this.prisma.user.findUnique({
@@ -110,7 +112,6 @@ export class UserService {
 
   async updateProfilePic(id: string, file: Express.Multer.File) {
     const imageUrl = await this.uploadService.uploadFile(file, 'images');
-
     return this.prisma.user.update({
       where: { id },
       data: {
@@ -120,23 +121,18 @@ export class UserService {
   }
 
   async deleteProfilePic(id: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
-    });
-
+    const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) {
       throw new Error('User not found');
     }
 
     if (user.profilePic) {
-      await this.uploadService.deleteFile(user.profilePic); // Agar sizda deletePublicFile method mavjud bo‘lsa
+      await this.uploadService.deleteFile(user.profilePic);
     }
 
     return this.prisma.user.update({
       where: { id },
-      data: {
-        profilePic: "",
-      },
+      data: { profilePic: '' },
     });
   }
 
@@ -163,10 +159,7 @@ export class UserService {
 
   async getLessonStats(userId: string) {
     const totalLessons = await this.prisma.lessons.count();
-    const completedLessons = await this.prisma.lessonActivity.count({
-      where: { userId },
-    });
-
+    const completedLessons = await this.prisma.lessonActivity.count({ where: { userId } });
     return {
       totalLessons,
       completedLessons,
@@ -176,10 +169,7 @@ export class UserService {
 
   async getVocabularyStats(userId: string) {
     const totalWords = await this.prisma.dictonary.count();
-    const learnedWords = await this.prisma.vocabularyProgress.count({
-      where: { userId },
-    });
-
+    const learnedWords = await this.prisma.vocabularyProgress.count({ where: { userId } });
     return {
       totalWords,
       learnedWords,
@@ -189,14 +179,10 @@ export class UserService {
 
   async getQuizStats(userId: string) {
     const allQuizzes = await this.prisma.quizs.findMany();
-    const userProgress = await this.prisma.quizProgress.findMany({
-      where: { userId },
-    });
-
+    const userProgress = await this.prisma.quizProgress.findMany({ where: { userId } });
     const total = allQuizzes.length;
     const attempted = userProgress.length;
-    const correct = userProgress.filter(p => p.passed).length;
-
+    const correct = userProgress.filter((p) => p.passed).length;
     return {
       total,
       attempted,
@@ -204,6 +190,4 @@ export class UserService {
       passRate: Number(((correct / total) * 100).toFixed(2)),
     };
   }
-
-
 }
