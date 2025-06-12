@@ -9,43 +9,176 @@ datasource db {
 }
 
 model User {
-  name              String?
-  surname           String?
-  phonenumber       String?
-  password          String
-  code              String
-  codeExpiresAt     DateTime?
-  courses           String[]
-  email             String                  @unique
-  updatedAt         DateTime                @updatedAt
-  coins             Int                     @default(0)
-  profilePic        String                  @default("")
-  createdAt         DateTime                @default(now())
-  isVerified        Boolean                 @default(false)
-  id                String                  @id @default(uuid())
-  lessonActivity    LessonActivity[]
-  quizProgress      QuizProgress[]
-  vocabularyProgras VocabularyProgress[]
-  gifts             UserGift[]
-  notifications     NotificationRecipient[]
-  notificationsRead NotificationRead[]
+  id            String    @id @default(uuid())
+  name          String?
+  surname       String?
+  phonenumber   String?
+  password      String
+  email         String    @unique
+  profilePic    String    @default("")
+  coins         Int       @default(0)
+  isVerified    Boolean   @default(false)
+  code          String
+  codeExpiresAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  courses            UserCourse[]
+  gifts              UserGift[]
+  lessonActivity     LessonActivity[]
+  quizProgress       QuizProgress[]
+  vocabularyProgress VocabularyProgress[]
+  dailyActivity      DailyActivityLog[]
+  notifications      NotificationRecipient[]
+  notificationsRead  NotificationRead[]
+  mentorMessages     MentorMessage[]
 }
 
+model CoursesCategory {
+  id            String         @id @default(uuid())
+  title         String
+  shortName     String
+  thumbnail     String
+  goal          String
+  lessons       Lessons[]      @relation("CategoryLessons")
+  users         UserCourse[]
+  notifications Notification[]
+}
 
+model UserCourse {
+  id       String   @id @default(uuid())
+  userId   String
+  courseId String
+  joinedAt DateTime @default(now())
+
+  user   User            @relation(fields: [userId], references: [id])
+  course CoursesCategory @relation(fields: [courseId], references: [id])
+
+  progress UserCourseProgress[]
+
+  @@unique([userId, courseId])
+}
+
+model UserCourseProgress {
+  id               String   @id @default(uuid())
+  userCourseId     String
+  completedLessons Int      @default(0)
+  totalLessons     Int      @default(0)
+  updatedAt        DateTime @updatedAt
+
+  userCourse UserCourse @relation(fields: [userCourseId], references: [id])
+}
+
+model Lessons {
+  id                String          @id @default(uuid())
+  title             String
+  isDemo            Boolean         @default(false)
+  videoUrl          String
+  coursesCategoryId String
+  coursesCategory   CoursesCategory @relation("CategoryLessons", fields: [coursesCategoryId], references: [id])
+
+  dictonary      Dictonary[]      @relation("Dictonary")
+  quizs          Quizs[]          @relation("Quizs")
+  questions      Quessions[]      @relation("Quessions")
+  lessonActivity LessonActivity[]
+  quizProgress   QuizProgress[]
+}
+
+model LessonActivity {
+  id        String   @id @default(uuid())
+  userId    String
+  lessonsId String
+  watchedAt DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id])
+  lesson Lessons @relation(fields: [lessonsId], references: [id])
+
+  @@unique([userId, lessonsId])
+}
+
+model Quizs {
+  id            String @id @default(uuid())
+  quiz          String
+  lessonsId     String
+  option1       String
+  option2       String
+  option3       String
+  currentOption String
+
+  Lessons Lessons @relation("Quizs", fields: [lessonsId], references: [id])
+}
+
+model QuizProgress {
+  id          String   @id @default(uuid())
+  userId      String
+  lessonsId   String
+  score       Int
+  total       Int
+  passed      Boolean
+  attemptedAt DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id])
+  lesson Lessons @relation(fields: [lessonsId], references: [id])
+
+  @@unique([userId, lessonsId])
+}
+
+model Dictonary {
+  id         String @id @default(uuid())
+  word       String
+  translated String
+  lessonsId  String
+
+  Lessons            Lessons              @relation("Dictonary", fields: [lessonsId], references: [id])
+  vocabularyProgress VocabularyProgress[]
+}
+
+model VocabularyProgress {
+  id          String   @id @default(uuid())
+  userId      String
+  dictonaryId String
+  learnedAt   DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id])
+  dictonary Dictonary @relation(fields: [dictonaryId], references: [id])
+
+  @@unique([userId, dictonaryId])
+}
+
+model UserGift {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  reason    String
+  awardedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model DailyActivityLog {
+  id             String   @id @default(uuid())
+  userId         String
+  date           DateTime @unique
+  lessonsWatched Int
+  wordsLearned   Int
+  testsPassed    Int
+
+  user User @relation(fields: [userId], references: [id])
+}
 
 model Notification {
-  id        String             @id @default(uuid())
+  id        String   @id @default(uuid())
   title     String
   message   String
-  createdAt DateTime           @default(now())
-  isGlobal  Boolean            @default(false)
-  sentAt    DateTime           @default(now())
-  readBy    NotificationRead[]
+  createdAt DateTime @default(now())
+  isGlobal  Boolean  @default(false)
+  sentAt    DateTime @default(now())
 
   courseId String?
   course   CoursesCategory? @relation(fields: [courseId], references: [id])
 
   recipients NotificationRecipient[]
+  readBy     NotificationRead[]
 }
 
 model NotificationRecipient {
@@ -72,102 +205,19 @@ model NotificationRead {
   @@unique([userId, notificationId])
 }
 
-model CoursesCategory {
-  id            String         @id @default(uuid())
-  title         String
-  shortName     String
-  thumbnail     String
-  goal          String
-  lessons       Lessons[]      @relation("CategoryLessons")
-  notifications Notification[]
-}
-
-model Lessons {
-  id                String           @id @default(uuid())
-  title             String
-  isDemo            Boolean          @default(false)
-  videoUrl          String
-  coursesCategoryId String
-  quessions         Quessions[]      @relation("Quessions")
-  dictonary         Dictonary[]      @relation("Dictonary")
-  quizs             Quizs[]          @relation("Quizs")
-  coursesCategory   CoursesCategory  @relation("CategoryLessons", fields: [coursesCategoryId], references: [id])
-  LessonActivity    LessonActivity[]
-  QuizProgress      QuizProgress[]
-}
-
 model Quessions {
-  id        String  @id @default(uuid())
+  id        String @id @default(uuid())
   quession  String
-  Lessons   Lessons @relation("Quessions", fields: [lessonsId], references: [id])
   lessonsId String
+
+  Lessons Lessons @relation("Quessions", fields: [lessonsId], references: [id])
 }
 
-model Dictonary {
-  id                 String               @id @default(uuid())
-  word               String
-  translated         String
-  Lessons            Lessons              @relation("Dictonary", fields: [lessonsId], references: [id])
-  lessonsId          String
-  VocabularyProgress VocabularyProgress[]
-}
-
-model Quizs {
-  id            String  @id @default(uuid())
-  quiz          String
-  lessonsId     String
-  option1       String
-  option2       String
-  option3       String
-  currentOption String
-  Lessons       Lessons @relation("Quizs", fields: [lessonsId], references: [id])
-}
-
-model UserGift {
+model MentorMessage {
   id        String   @id @default(uuid())
   userId    String
-  title     String
-  reason    String
-  awardedAt DateTime @default(now())
+  message   String
+  createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
-}
-
-model LessonActivity {
-  id        String   @id @default(uuid())
-  userId    String
-  lessonsId String
-  watchedAt DateTime @default(now())
-
-  user   User    @relation(fields: [userId], references: [id])
-  lesson Lessons @relation(fields: [lessonsId], references: [id])
-
-  @@unique([userId, lessonsId, watchedAt])
-}
-
-model QuizProgress {
-  id          String   @id @default(uuid())
-  userId      String
-  lessonsId   String
-  score       Int
-  total       Int
-  passed      Boolean
-  attemptedAt DateTime @default(now())
-
-  user   User    @relation(fields: [userId], references: [id])
-  lesson Lessons @relation(fields: [lessonsId], references: [id])
-
-  @@unique([userId, lessonsId])
-}
-
-model VocabularyProgress {
-  id          String   @id @default(uuid())
-  userId      String
-  dictonaryId String
-  learnedAt   DateTime @default(now())
-
-  user      User      @relation(fields: [userId], references: [id])
-  dictonary Dictonary @relation(fields: [dictonaryId], references: [id])
-
-  @@unique([userId, dictonaryId])
 }
