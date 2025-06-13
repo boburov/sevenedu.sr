@@ -9,38 +9,23 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  name          String?
-  surname       String?
-  phonenumber   String?
-  password      String
-  email         String    @unique
-  profilePic    String    @default("")
-  coins         Int       @default(0)
-  isVerified    Boolean   @default(false)
-  code          String
-  codeExpiresAt DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  courses UserCourse[]
-
-  vocabularyResult VocabularyResult[]
-
-  showedLesson LessonActivity[]
-
+  id                String                  @id @default(uuid())
+  name              String?
+  surname           String?
+  phonenumber       String?
+  password          String
+  email             String                  @unique
+  profilePic        String                  @default("")
+  coins             Int                     @default(0)
+  isVerified        Boolean                 @default(false)
+  code              String
+  codeExpiresAt     DateTime?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  courses           UserCourse[]
+  showedLesson      LessonActivity[]
   notifications     NotificationRecipient[]
   notificationsRead NotificationRead[]
-}
-
-model VocabularyResult {
-  id         String    @id @default(uuid())
-  userId     String
-  wordId     String
-  isCorrect  Boolean
-  answeredAt DateTime  @default(now())
-  user       User      @relation(fields: [userId], references: [id])
-  word       Dictonary @relation(fields: [wordId], references: [id])
 }
 
 model CoursesCategory {
@@ -85,9 +70,15 @@ model LessonActivity {
   id        String   @id @default(uuid())
   userId    String
   lessonsId String
-  watchedAt DateTime @default(now())
-  score     Int?
   courseId  String?
+  watchedAt DateTime @default(now())
+  score     Int? 
+
+  vocabularyCorrect Int @default(0)
+  vocabularyWrong   Int @default(0)
+
+  quizCorrect Int @default(0)
+  quizWrong   Int @default(0)
 
   user   User             @relation(fields: [userId], references: [id])
   lesson Lessons          @relation(fields: [lessonsId], references: [id])
@@ -114,8 +105,7 @@ model Dictonary {
   translated String
   lessonsId  String
 
-  Lessons          Lessons            @relation("Dictonary", fields: [lessonsId], references: [id])
-  VocabularyResult VocabularyResult[]
+  Lessons Lessons @relation("Dictonary", fields: [lessonsId], references: [id])
 }
 
 model Notification {

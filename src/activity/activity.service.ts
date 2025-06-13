@@ -6,7 +6,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class ActivityService {
   constructor(private prisma: PrismaService) { }
 
-  async showedLessons(dto: { userId: string; lessonId: string }) {
+  async showedLessons(dto: { userId: string; lessonId: string, }) {
     const { userId, lessonId } = dto;
     const score = 87;
 
@@ -54,6 +54,43 @@ export class ActivityService {
     return { msg: 'Activity qo‘shildi va score qo‘shildi' };
   }
 
+  async updateLessonActivityStats(dto: {
+    userId: string,
+    lessonsId: string,
+    vocabularyCorrect: number,
+    vocabularyWrong: number,
+    quizCorrect: number,
+    quizWrong: number,
+    score: number
+  }) {
+    const {
+      userId,
+      lessonsId,
+      vocabularyCorrect,
+      vocabularyWrong,
+      quizCorrect,
+      quizWrong,
+      score
+    } = dto;
+
+    await this.prisma.lessonActivity.update({
+      where: {
+        userId_lessonsId: {
+          userId,
+          lessonsId
+        }
+      },
+      data: {
+        vocabularyCorrect: { increment: vocabularyCorrect },
+        vocabularyWrong: { increment: vocabularyWrong },
+        quizCorrect: { increment: quizCorrect },
+        quizWrong: { increment: quizWrong },
+        score: score,
+      }
+    });
+
+    return { msg: "updated successfully" };
+  }
 
 
 }
