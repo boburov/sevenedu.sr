@@ -9,4 +9,17 @@ export class ActivityController {
   async be_active(@Body() dto: { userId: string, lessonId: string }) {
     return this.activityService.showedLessons(dto)
   }
+
+  @Post('update')
+  async updateLessonActivityStats(@Body() dto: {
+    userId: string,
+    lessonsId: string,
+    vocabularyCorrect: number,
+    vocabularyWrong: number,
+    quizCorrect: number,
+    quizWrong: number,
+    score: number
+  }) {
+    return this.activityService.updateLessonActivityStats(dto)
+  }
 }

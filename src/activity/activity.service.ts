@@ -57,11 +57,11 @@ export class ActivityService {
   async updateLessonActivityStats(dto: {
     userId: string,
     lessonsId: string,
-    vocabularyCorrect: number,
-    vocabularyWrong: number,
-    quizCorrect: number,
-    quizWrong: number,
-    score: number
+    vocabularyCorrect?: number,
+    vocabularyWrong?: number,
+    quizCorrect?: number,
+    quizWrong?: number,
+    score?: number
   }) {
     const {
       userId,
