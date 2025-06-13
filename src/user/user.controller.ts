@@ -50,12 +50,14 @@ export class UserController {
     return user;
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('chat')
   async chatWithAI(@Body() body: { lessonId: string; message: string }, @Req() req): Promise<{ answer: string }> {
     const userId = req.user.id;
     const answer = await this.userService.chatWithAI(userId, body.lessonId, body.message);
     return { answer };
   }
+
 
   @Get('ai-usage')
   async getUsage(

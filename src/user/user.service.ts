@@ -4,6 +4,7 @@ import { UploadsService } from 'src/uploads/uploads.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 import OpenAI from 'openai';
+import { ConfigService } from '@nestjs/config';
 
 
 @Injectable()
@@ -12,9 +13,10 @@ export class UserService {
   constructor(
     private prisma: PrismaService,
     private uploadService: UploadsService,
+    private config: ConfigService,
   ) {
     this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: this.config.getOrThrow('OPENAI_API_KEY')
     });
   }
 
