@@ -6,6 +6,47 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class ActivityService {
   constructor(private prisma: PrismaService) { }
 
+  async getUserDailyActivity(userId: string) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const activities = await this.prisma.lessonActivity.findMany({
+      where: {
+        userId,
+        watchedAt: {
+          gte: today,
+          lt: tomorrow,
+        },
+      },
+      select: {
+        lessonsId: true,
+        vocabularyCorrect: true,
+        vocabularyWrong: true,
+        quizCorrect: true,
+        quizWrong: true,
+        score: true,
+        watchedAt: true,
+      },
+    });
+
+    return {
+      date: today.toISOString().split('T')[0],
+      totalLessons: activities.length,
+      totalVocabularyCorrect: activities.reduce((sum, act) => sum + (act.vocabularyCorrect || 0), 0),
+      totalVocabularyWrong: activities.reduce((sum, act) => sum + (act.vocabularyWrong || 0), 0),
+      totalQuizCorrect: activities.reduce((sum, act) => sum + (act.quizCorrect || 0), 0),
+      totalQuizWrong: activities.reduce((sum, act) => sum + (act.quizWrong || 0), 0),
+      averageScore: activities.length
+        ? Math.round(activities.reduce((sum, act) => sum + (act.score || 0), 0) / activities.length)
+        : 0,
+      lessons: activities,
+    };
+  }
+
+
   async showedLessons(dto: { userId: string; lessonId: string, }) {
     const { userId, lessonId } = dto;
     const score = 87;

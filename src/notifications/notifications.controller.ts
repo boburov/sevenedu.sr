@@ -3,11 +3,8 @@ import {
   Get,
   Post,
   Put,
-  Delete,
   Param,
   Body,
-  Query,
-  Req,
 } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
@@ -16,6 +13,8 @@ import { NotificationRecipientDto } from './dto/update-ntf.dto';
 @Controller('notifications')
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) { }
+
+  
 
   @Get()
   async getAll() {

@@ -1,9 +1,14 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ActivityService } from './activity.service';
 
 @Controller('activity')
 export class ActivityController {
   constructor(private readonly activityService: ActivityService) { }
+
+  @Get('daily/:userId')
+  async getDailyActivity(@Param('userId') userId: string) {
+    return this.activityService.getUserDailyActivity(userId);
+  }
 
   @Post('be-active')
   async be_active(@Body() dto: { userId: string, lessonId: string }) {
