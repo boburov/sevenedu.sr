@@ -1,16 +1,22 @@
-import { HttpException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UploadsService } from 'src/uploads/uploads.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
-import { MailService } from 'src/mail/mail.service';
+import OpenAI from 'openai';
+
 
 @Injectable()
 export class UserService {
+  private openai: OpenAI;
   constructor(
     private prisma: PrismaService,
     private uploadService: UploadsService,
-  ) { }
+  ) {
+    this.openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
 
   async updateUser(id: string, updateUser: UpdateUserDto) {
     if (!updateUser) {
@@ -156,8 +162,8 @@ export class UserService {
     });
   }
 
-  async deleteUser(id: string) {
-    await this.prisma.user.delete({ where: { id } });
+  async deleteUser() {
+    await this.prisma.user.deleteMany();
     return { msg: 'Deleted' };
   }
 
@@ -171,5 +177,51 @@ export class UserService {
     };
   }
 
+  async chatWithAI(userId: string, lessonId: string, message: string): Promise<string> {
+    const today = new Date();
+    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+
+    let usage = await this.prisma.lessonAIUsage.findFirst({
+      where: {
+        userId,
+        lessonId,
+        date: { gte: startOfDay },
+      },
+    });
+
+    if (!usage) {
+      usage = await this.prisma.lessonAIUsage.create({
+        data: {
+          userId,
+          lessonId,
+          date: new Date(),
+          count: 1,
+        },
+      });
+    } else if (usage.count >= 10) {
+      throw new ForbiddenException('Ushbu dars bo‘yicha bugungi 10 ta savoldan foydalandingiz.');
+    } else {
+      await this.prisma.lessonAIUsage.update({
+        where: { id: usage.id },
+        data: { count: { increment: 1 } },
+      });
+    }
+
+    const completion = await this.openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: `Siz til o‘rgatuvchi ustozsiz. Foydalanuvchi bilan ${lessonId} darsidagi til bilimlarini muhokama qilasiz. Faqat shu mavzu doirasida savollarga javob bering.`,
+        },
+        {
+          role: 'user',
+          content: message,
+        },
+      ],
+    });
+
+    return completion.choices[0].message?.content ?? 'Javob topilmadi.';
+  }
 
 }

@@ -26,6 +26,7 @@ model User {
   showedLesson      LessonActivity[]
   notifications     NotificationRecipient[]
   notificationsRead NotificationRead[]
+  lessonAIUsage     LessonAIUsage[]
 }
 
 model CoursesCategory {
@@ -72,7 +73,7 @@ model LessonActivity {
   lessonsId String
   courseId  String?
   watchedAt DateTime @default(now())
-  score     Int? 
+  score     Int?
 
   vocabularyCorrect Int @default(0)
   vocabularyWrong   Int @default(0)
@@ -153,4 +154,16 @@ model Quessions {
   lessonsId String
 
   Lessons Lessons @relation("Quessions", fields: [lessonsId], references: [id])
+}
+
+model LessonAIUsage {
+  id       String   @id @default(uuid())
+  userId   String
+  lessonId String
+  date     DateTime
+  count    Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, lessonId, date])
 }

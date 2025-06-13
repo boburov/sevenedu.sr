@@ -50,6 +50,33 @@ export class UserController {
     return user;
   }
 
+  @Post('chat')
+  async chatWithAI(@Body() body: { lessonId: string; message: string }, @Req() req): Promise<{ answer: string }> {
+    const userId = req.user.id;
+    const answer = await this.userService.chatWithAI(userId, body.lessonId, body.message);
+    return { answer };
+  }
+
+  @Get('ai-usage')
+  async getUsage(
+    @Query('userId') userId: string,
+    @Query('lessonId') lessonId: string,
+  ) {
+    const today = new Date();
+    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+
+    const usage = await this.prisma.lessonAIUsage.findFirst({
+      where: {
+        userId,
+        lessonId,
+        date: { gte: startOfDay },
+      },
+    });
+
+    return { count: usage?.count || 0 };
+  }
+
+
 
   @Get(':id')
   async getUserById(@Param('id') id: string) {
@@ -90,13 +117,12 @@ export class UserController {
     return this.userService.deleteProfilePic(id);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Delete(':id')
-  async deleteUser(@Param('id') id: string) {
-    return this.userService.deleteUser(id);
+  @Delete('all')
+  async deleteUser() {
+    return this.userService.deleteUser();
   }
 
 
-  
+
 
 }

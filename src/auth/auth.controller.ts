@@ -37,6 +37,7 @@ export class AuthController {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
+        courses:true,
         notifications: {
           include: {
             notification: true,
