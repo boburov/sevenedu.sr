@@ -190,4 +190,5 @@ export class UserService {
       passRate: Number(((correct / total) * 100).toFixed(2)),
     };
   }
+
 }
