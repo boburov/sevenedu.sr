@@ -13,6 +13,7 @@ import { QuessionsModule } from './quessions/quessions.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationsModule } from './notifications/notifications.module';
 import { DictonaryModule } from './dictonary/dictonary.module';
+import { ActivityModule } from './activity/activity.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { DictonaryModule } from './dictonary/dictonary.module';
     QuessionsModule,
     DictonaryModule,
     NotificationsModule,
+    ActivityModule,
   ],
   controllers: [AppController],
   providers: [AppService, MailService],

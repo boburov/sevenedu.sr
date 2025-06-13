@@ -42,8 +42,6 @@ export class CoursesService {
     return get;
   }
 
-
-
   async createCategory(
     dto: CreateCategoryCourseDto,
     file: Express.Multer.File

@@ -23,23 +23,36 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  courses           UserCourse[]
-  gifts             UserGift[]
-  lessonActivity    LessonActivity[]
-  dailyActivity     DailyActivityLog[]
+  courses UserCourse[]
+
+  vocabularyResult VocabularyResult[]
+
+  showedLesson LessonActivity[]
+
   notifications     NotificationRecipient[]
   notificationsRead NotificationRead[]
 }
 
+model VocabularyResult {
+  id         String    @id @default(uuid())
+  userId     String
+  wordId     String
+  isCorrect  Boolean
+  answeredAt DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id])
+  word       Dictonary @relation(fields: [wordId], references: [id])
+}
+
 model CoursesCategory {
-  id            String         @id @default(uuid())
-  title         String
-  shortName     String
-  thumbnail     String
-  goal          String
-  lessons       Lessons[]      @relation("CategoryLessons")
-  users         UserCourse[]
-  notifications Notification[]
+  id             String           @id @default(uuid())
+  title          String
+  shortName      String
+  thumbnail      String
+  goal           String
+  lessons        Lessons[]        @relation("CategoryLessons")
+  users          UserCourse[]
+  notifications  Notification[]
+  LessonActivity LessonActivity[]
 }
 
 model UserCourse {
@@ -51,19 +64,7 @@ model UserCourse {
   user   User            @relation(fields: [userId], references: [id])
   course CoursesCategory @relation(fields: [courseId], references: [id])
 
-  progress UserCourseProgress[]
-
   @@unique([userId, courseId])
-}
-
-model UserCourseProgress {
-  id               String   @id @default(uuid())
-  userCourseId     String
-  completedLessons Int      @default(0)
-  totalLessons     Int      @default(0)
-  updatedAt        DateTime @updatedAt
-
-  userCourse UserCourse @relation(fields: [userCourseId], references: [id])
 }
 
 model Lessons {
@@ -85,9 +86,12 @@ model LessonActivity {
   userId    String
   lessonsId String
   watchedAt DateTime @default(now())
+  score     Int?
+  courseId  String?
 
-  user   User    @relation(fields: [userId], references: [id])
-  lesson Lessons @relation(fields: [lessonsId], references: [id])
+  user   User             @relation(fields: [userId], references: [id])
+  lesson Lessons          @relation(fields: [lessonsId], references: [id])
+  course CoursesCategory? @relation(fields: [courseId], references: [id])
 
   @@unique([userId, lessonsId])
 }
@@ -110,28 +114,8 @@ model Dictonary {
   translated String
   lessonsId  String
 
-  Lessons Lessons @relation("Dictonary", fields: [lessonsId], references: [id])
-}
-
-model UserGift {
-  id        String   @id @default(uuid())
-  userId    String
-  title     String
-  reason    String
-  awardedAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id])
-}
-
-model DailyActivityLog {
-  id             String   @id @default(uuid())
-  userId         String
-  date           DateTime 
-  lessonsWatched Int
-  wordsLearned   Int
-  testsPassed    Int
-
-  user User @relation(fields: [userId], references: [id])
+  Lessons          Lessons            @relation("Dictonary", fields: [lessonsId], references: [id])
+  VocabularyResult VocabularyResult[]
 }
 
 model Notification {

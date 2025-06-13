@@ -10,8 +10,7 @@ export class UserService {
   constructor(
     private prisma: PrismaService,
     private uploadService: UploadsService,
-    private mailService: MailService,
-  ) {}
+  ) { }
 
   async updateUser(id: string, updateUser: UpdateUserDto) {
     if (!updateUser) {
@@ -58,6 +57,11 @@ export class UserService {
   async allUser() {
     return await this.prisma.user.findMany({
       include: {
+        showedLesson: {
+          include: {
+            lesson: true
+          }
+        },
         notifications: {
           include: {
             notification: true,
@@ -71,31 +75,31 @@ export class UserService {
     const user = await this.prisma.user.findUnique({
       where: { email },
     });
-  
+
     if (!user) {
       throw new NotFoundException('Foydalanuvchi topilmadi');
     }
-  
+
     const exists = await this.prisma.userCourse.findFirst({
       where: {
         userId: user.id,
         courseId,
       },
     });
-  
+
     if (exists) {
       return { message: 'Bu kurs allaqachon foydalanuvchida mavjud' };
     }
-  
+
     await this.prisma.userCourse.create({
       data: {
         userId: user.id,
         courseId,
       },
     });
-  
+
     return { message: 'Kurs foydalanuvchiga qo‘shildi' };
-  }  
+  }
 
   async getUserById(id: string) {
     return this.prisma.user.findUnique({
@@ -167,28 +171,5 @@ export class UserService {
     };
   }
 
-  async getVocabularyStats(userId: string) {
-    const totalWords = await this.prisma.dictonary.count();
-    const learnedWords = await this.prisma.vocabularyProgress.count({ where: { userId } });
-    return {
-      totalWords,
-      learnedWords,
-      progressRate: Number(((learnedWords / totalWords) * 100).toFixed(2)),
-    };
-  }
-
-  async getQuizStats(userId: string) {
-    const allQuizzes = await this.prisma.quizs.findMany();
-    const userProgress = await this.prisma.quizProgress.findMany({ where: { userId } });
-    const total = allQuizzes.length;
-    const attempted = userProgress.length;
-    const correct = userProgress.filter((p) => p.passed).length;
-    return {
-      total,
-      attempted,
-      passed: correct,
-      passRate: Number(((correct / total) * 100).toFixed(2)),
-    };
-  }
 
 }
