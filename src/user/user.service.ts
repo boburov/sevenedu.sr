@@ -1,10 +1,12 @@
-import { ForbiddenException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, HttpException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UploadsService } from 'src/uploads/uploads.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 import OpenAI from 'openai';
 import { ConfigService } from '@nestjs/config';
+import { eachDayOfInterval, subDays } from 'date-fns';
+import { format } from 'date-fns';
 
 
 @Injectable()
@@ -201,7 +203,7 @@ export class UserService {
         },
       });
     } else if (usage.count >= 10) {
-      throw new ForbiddenException('Ushbu dars bo‘yicha bugungi 10 ta savoldan foydalandingiz.');
+      throw new ForbiddenException('Siz bugungi 10 ta kreditdan foydalandingiz.');
     } else {
       await this.prisma.lessonAIUsage.update({
         where: { id: usage.id },
@@ -210,11 +212,11 @@ export class UserService {
     }
 
     const completion = await this.openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-3.5-turbo',
       messages: [
         {
           role: 'system',
-          content: `Siz til o‘rgatuvchi ustozsiz. Foydalanuvchi bilan ${lessonId} darsidagi til bilimlarini muhokama qilasiz. Faqat shu mavzu doirasida savollarga javob bering.`,
+          content: `Siz foydalanuvchiga til o‘rgatadigan ustozsiz. Har savolga aniq, qisqa, o‘zbek tilida javob bering. Dars mavzusidan chiqmay javob bering.`,
         },
         {
           role: 'user',
@@ -224,6 +226,176 @@ export class UserService {
     });
 
     return completion.choices[0].message?.content ?? 'Javob topilmadi.';
+  }
+
+  async getUserProgress(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { showedLesson: true },
+    });
+
+    let vocabularyCorrect = 0;
+    let vocabularyWrong = 0;
+    let quizCorrect = 0;
+    let quizWrong = 0;
+    let testScore = 0;
+    let testCount = 0;
+
+    user?.showedLesson.forEach((lesson) => {
+      vocabularyCorrect += lesson.vocabularyCorrect;
+      vocabularyWrong += lesson.vocabularyWrong;
+      quizCorrect += lesson.quizCorrect;
+      quizWrong += lesson.quizWrong;
+      testCount += 1;
+    });
+
+    return {
+      vocabulary: {
+        correct: vocabularyCorrect,
+        total: vocabularyCorrect + vocabularyWrong,
+      },
+      quiz: {
+        correct: quizCorrect,
+        total: quizCorrect + quizWrong,
+      },
+      test: {
+        correct: testScore,
+        total: testCount * 100,
+      },
+    };
+  }
+
+  async getDailyStats(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { createdAt: true },
+    });
+
+    if (!user) throw new NotFoundException('Foydalanuvchi topilmadi');
+
+    const today = new Date();
+    const startDate = user.createdAt || subDays(today, 30);
+    const days = eachDayOfInterval({ start: startDate, end: today });
+
+    const lessonActivities = await this.prisma.lessonActivity.findMany({
+      where: {
+        userId,
+        watchedAt: { gte: startDate, lte: today },
+      },
+    });
+
+    const dailyStats = days.map((day) => {
+      const dateKey = format(day, 'yyyy-MM-dd');
+
+      const filtered = lessonActivities.filter(
+        (a) => format(a.watchedAt, 'yyyy-MM-dd') === dateKey
+      );
+
+      const vocabularyCorrect = filtered.reduce(
+        (sum, item) => sum + (item.vocabularyCorrect || 0),
+        0
+      );
+      const vocabularyWrong = filtered.reduce(
+        (sum, item) => sum + (item.vocabularyWrong || 0),
+        0
+      );
+
+      const quizCorrect = filtered.reduce(
+        (sum, item) => sum + (item.quizCorrect || 0),
+        0
+      );
+      const quizWrong = filtered.reduce(
+        (sum, item) => sum + (item.quizWrong || 0),
+        0
+      );
+
+      const testTotal = filtered.filter((item) => item.score !== null && item.score !== undefined).length;
+      const testCorrect = filtered.reduce(
+        (sum, item) => sum + (item.score || 0),
+        0
+      );
+
+      return {
+        date: dateKey,
+        vocabulary: {
+          correct: vocabularyCorrect,
+          total: vocabularyCorrect + vocabularyWrong,
+        },
+        quiz: {
+          correct: quizCorrect,
+          total: quizCorrect + quizWrong,
+        },
+        test: {
+          correct: testCorrect,
+          total: testTotal * 100, // agar test 100 ballik bo‘lsa
+        },
+      };
+    });
+
+    return dailyStats;
+  }
+
+
+  async getActivityByUser(userId: string) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { createdAt: true },
+      });
+
+      const activity = await this.prisma.lessonActivity.findMany({
+        where: { userId },
+        select: {
+          watchedAt: true,
+          vocabularyCorrect: true,
+          vocabularyWrong: true,
+        },
+      });
+
+      return {
+        createdAt: user?.createdAt,
+        activity,
+      };
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to get user activity');
+    }
+  }
+
+  async getLessonDetailsPerUser(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        showedLesson: {
+          include: {
+            lesson: true,
+          },
+        },
+      },
+    });
+
+    if (!user) throw new NotFoundException('Foydalanuvchi topilmadi');
+
+    const lessonDetails = user.showedLesson.map((entry) => ({
+      lessonId: entry.lesson.id,
+      title: entry.lesson.title,
+      watchedAt: entry.watchedAt,
+      vocabulary: {
+        correct: entry.vocabularyCorrect,
+        wrong: entry.vocabularyWrong,
+        total: entry.vocabularyCorrect + entry.vocabularyWrong,
+      },
+      quiz: {
+        correct: entry.quizCorrect,
+        wrong: entry.quizWrong,
+        total: entry.quizCorrect + entry.quizWrong,
+      },
+      test: {
+        score: entry.score ?? 0,
+        total: 100,
+      },
+    }));
+
+    return lessonDetails;
   }
 
 }

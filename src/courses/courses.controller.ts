@@ -8,8 +8,10 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   Res,
   UploadedFile,
+  UseGuards,
   UseInterceptors
 } from '@nestjs/common';
 import { CoursesService } from './courses.service';
@@ -18,14 +20,55 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateLessonDto } from './dto/create-course.dot';
 import { UpdateCategoryDto } from './dto/update-course.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
+import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
+import { SaveVocabularyResultDto } from './dto/save-vocabulary-result.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Controller('courses')
 export class CoursesController {
-  constructor(private courseService: CoursesService,) { }
+  constructor(private courseService: CoursesService, private prisma: PrismaService) { }
 
   @Get('all')
   async all() {
     return this.courseService.getAll()
+  }
+
+  @Get(':lessonId/vocabulary-quiz')
+  async getVocabularyQuiz(@Param('lessonId') lessonId: string) {
+    return this.courseService.generateVocabularyQuiz(lessonId);
+  }
+
+  @Post(':lessonId/vocabulary-result')
+  @UseGuards(JwtAuthGuard)
+  async saveVocabularyResult(
+    @Param('lessonId') lessonId: string,
+    @Body() body: SaveVocabularyResultDto,
+    @Req() req,
+  ) {
+    const userId = req.user.id;
+    await this.prisma.lessonActivity.upsert({
+      where: {
+        userId_lessonsId: {
+          userId: userId,
+          lessonsId: lessonId,
+        },
+      },
+      update: {
+        watchedAt: new Date(),
+        vocabularyCorrect: body.correct,
+        vocabularyWrong: body.wrong,
+      },
+      create: {
+        userId: userId,
+        lessonsId: lessonId,
+        courseId: (await this.prisma.lessons.findUnique({ where: { id: lessonId } }))?.coursesCategoryId || "",
+        watchedAt: new Date(),
+        vocabularyCorrect: body.correct,
+        vocabularyWrong: body.wrong,
+      },
+    });
+
+    return this.courseService.saveVocabularyResult(lessonId, userId, body.correct, body.wrong);
   }
 
   @Get('category/:id')

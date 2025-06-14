@@ -4,6 +4,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('user')
 export class UserController {
@@ -32,6 +33,17 @@ export class UserController {
     return { available: true };
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get("user-progress")
+  async getUserProgress(@Req() req) {
+    const userId = req.user.id;
+    return this.userService.getUserProgress(userId);
+  }
+
+  @Get(':id/lesson-details')
+  getLessonDetails(@Param('id') userId: string) {
+    return this.userService.getLessonDetailsPerUser(userId);
+  }
 
   @Get('by-email')
   async getUserByEmail(@Query('email') email: string) {
@@ -51,19 +63,29 @@ export class UserController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('daily-stats')
+  async getDailyStats(@Req() req: Request & { user: { id: string } }) {
+    return this.userService.getDailyStats(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('chat')
-  async chatWithAI(@Body() body: { lessonId: string; message: string }, @Req() req): Promise<{ answer: string }> {
+  async chatWithAI(
+    @Body() body: { lessonId: string; message: string },
+    @Req() req,
+  ): Promise<{ answer: string }> {
     const userId = req.user.id;
     const answer = await this.userService.chatWithAI(userId, body.lessonId, body.message);
     return { answer };
   }
 
-
   @Get('ai-usage')
+  @UseGuards(JwtAuthGuard)
   async getUsage(
-    @Query('userId') userId: string,
     @Query('lessonId') lessonId: string,
-  ) {
+    @Req() req,
+  ): Promise<{ count: number }> {
+    const userId = req.user.id;
     const today = new Date();
     const startOfDay = new Date(today.setHours(0, 0, 0, 0));
 
@@ -77,8 +99,6 @@ export class UserController {
 
     return { count: usage?.count || 0 };
   }
-
-
 
   @Get(':id')
   async getUserById(@Param('id') id: string) {

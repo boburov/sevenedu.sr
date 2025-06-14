@@ -27,4 +27,5 @@ export class ActivityController {
   }) {
     return this.activityService.updateLessonActivityStats(dto)
   }
+  
 }

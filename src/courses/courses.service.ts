@@ -17,6 +17,54 @@ export class CoursesService {
 
   ) { }
 
+  async generateVocabularyQuiz(lessonId: string) {
+    const words = await this.prisma.dictonary.findMany({ where: { lessonsId: lessonId } });
+
+    const quizWords = this.shuffleArray(words).slice(0, 10);
+
+    return quizWords.map(word => {
+      const wrongOptions = this.shuffleArray(
+        words.filter(w => w.id !== word.id)
+      ).slice(0, 3).map(w => w.translated);
+
+      const options = this.shuffleArray([...wrongOptions, word.translated]);
+
+      return {
+        word: word.word,
+        correct: word.translated,
+        options,
+      };
+    });
+  }
+
+  async saveVocabularyResult(lessonId: string, userId: string, correct: number, wrong: number) {
+    const existing = await this.prisma.lessonActivity.findFirst({
+      where: { userId, lessonsId: lessonId },
+    });
+
+    if (existing) {
+      return this.prisma.lessonActivity.update({
+        where: { id: existing.id },
+        data: { vocabularyCorrect: correct, vocabularyWrong: wrong },
+      });
+    }
+
+    return this.prisma.lessonActivity.create({
+      data: {
+        userId,
+        lessonsId: lessonId,
+        vocabularyCorrect: correct,
+        vocabularyWrong: wrong,
+      },
+    });
+  }
+
+  private shuffleArray<T>(array: T[]): T[] {
+    return array
+      .map(value => ({ value, sort: Math.random() }))
+      .sort((a, b) => a.sort - b.sort)
+      .map(({ value }) => value);
+  }
 
   async getAll() {
     const course = await this.prisma.coursesCategory.findMany({
@@ -85,7 +133,6 @@ export class CoursesService {
     return newCourse;
   }
 
-
   async updateCategory(id: string, dto: UpdateCategoryDto, file?: Express.Multer.File) {
     const existingCategory = await this.prisma.coursesCategory.findUnique({ where: { id } });
     if (!existingCategory) throw new NotFoundException('Kategoriya topilmadi');
@@ -136,8 +183,6 @@ export class CoursesService {
       },
     });
   }
-
-
 
   async deleteLesson(id: string) {
     const lesson = await this.prisma.lessons.delete({ where: { id } })
