@@ -335,7 +335,6 @@ export class UserService {
     return dailyStats;
   }
 
-
   async getActivityByUser(userId: string) {
     try {
       const user = await this.prisma.user.findUnique({

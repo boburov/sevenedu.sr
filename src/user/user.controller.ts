@@ -144,7 +144,4 @@ export class UserController {
     return this.userService.deleteUser();
   }
 
-
-
-
 }

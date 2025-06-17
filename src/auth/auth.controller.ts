@@ -24,7 +24,7 @@ export class AuthController {
   @Get('verify-token')
   verifyToken(@Req() req) {
     return {
-      message: 'Token valid ✅',
+      message: 'Token valid',
       user: req.user,
     };
   }
@@ -37,7 +37,7 @@ export class AuthController {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
-        courses:true,
+        courses: true,
         notifications: {
           include: {
             notification: true,
@@ -52,6 +52,7 @@ export class AuthController {
 
   @Post('verify')
   async verifyCode(@Body() verifyCode: VerifyCodeDto) {
+    this.authService.incrementUserCoinByEmail(verifyCode.email);
     return this.authService.verify(verifyCode);
   }
 

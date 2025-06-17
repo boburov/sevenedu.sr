@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -38,6 +39,19 @@ export class CoursesController {
     return this.courseService.generateVocabularyQuiz(lessonId);
   }
 
+  @Get('category/:id')
+  async getCategory(@Param('id') id: string) {
+    return this.courseService.getcategory(id)
+  }
+
+  @Get('lessons/:id')
+  async getLessonById(
+    @Param('id') id: string,
+  ) {
+    return this.courseService.getLessonById(id);
+  }
+
+
   @Post(':lessonId/vocabulary-result')
   @UseGuards(JwtAuthGuard)
   async saveVocabularyResult(
@@ -71,29 +85,20 @@ export class CoursesController {
     return this.courseService.saveVocabularyResult(lessonId, userId, body.correct, body.wrong);
   }
 
-  @Get('category/:id')
-  async getCategory(@Param('id') id: string) {
-    return this.courseService.getcategory(id)
-  }
-
-  @Get('lessons/:id')
-  async getLessonById(
-    @Param('id') id: string,
-  ) {
-    return this.courseService.getLessonById(id);
-  }
-
   @Post('create')
   @UseInterceptors(FileInterceptor('file'))
   createCategory(
     @Body() dto: CreateCategoryCourseDto,
     @UploadedFile() file: Express.Multer.File
   ) {
-    console.log('FILE:', file);
+    if (!file.mimetype.startsWith('video/')) {
+      throw new BadRequestException('Faqat video fayl yuklash mumkin');
+    }
+
     return this.courseService.createCategory(dto, file);
   }
 
-  @Post('category/:id/create-lesson')
+  @Post('category/:id/lesson')
   @UseInterceptors(FileInterceptor('video'))
   async createNewLesson(
     @Param('id') id: string,
@@ -112,11 +117,6 @@ export class CoursesController {
     @Body() body: UpdateCategoryDto,
   ) {
     return this.courseService.updateCategory(id, body, file);
-  }
-
-  @Delete("")
-  async DeletePublicAccessBlockCommand(@Param("id") id: string) {
-    this.courseService.deleteLesson(id)
   }
 
   @Patch('lessons/:id')
@@ -140,7 +140,6 @@ export class CoursesController {
 
     return this.courseService.updateLesson(id, dto, file);
   }
-
 
   @Delete("lesson/:id")
   async deleteLEsson(@Param('id') id: string) {

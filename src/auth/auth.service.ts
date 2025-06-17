@@ -1,4 +1,4 @@
-import { HttpException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { HttpException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-auth.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
@@ -60,6 +60,26 @@ export class AuthService {
   }
 
 
+  async incrementUserCoinByEmail(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User topilmadi');
+    }
+
+    await this.prisma.user.update({
+      where: { email },
+      data: {
+        coins: user.coins + 1,
+      },
+    });
+
+    return { success: true, newCoin: user.coins + 1 };
+  }
+
+
   async register(dto: CreateUserDto) {
     const { email, password, name, surname, phonenumber } = dto;
 
@@ -79,6 +99,7 @@ export class AuthService {
         phonenumber,
         email,
         code,
+        coins: +1,
         codeExpiresAt: expiresAt,
         password: hashedPassword,
         isVerified: false,

@@ -7,6 +7,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { UpdateCategoryDto } from './dto/update-course.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
+import * as PDFDocument from 'pdfkit';
+import { PassThrough } from 'stream';
 
 @Injectable()
 export class CoursesService {
