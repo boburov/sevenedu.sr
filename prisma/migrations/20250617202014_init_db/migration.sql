@@ -18,28 +18,6 @@ CREATE TABLE "User" (
 );
 
 -- CreateTable
-CREATE TABLE "VocabularyResult" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "wordId" TEXT NOT NULL,
-    "isCorrect" BOOLEAN NOT NULL,
-    "answeredAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "VocabularyResult_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "QuizResult" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "quizId" TEXT NOT NULL,
-    "isCorrect" BOOLEAN NOT NULL,
-    "answeredAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "QuizResult_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "CoursesCategory" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
@@ -55,20 +33,10 @@ CREATE TABLE "UserCourse" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "courseId" TEXT NOT NULL,
+    "isFinished" BOOLEAN NOT NULL DEFAULT false,
     "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "UserCourse_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "UserCourseProgress" (
-    "id" TEXT NOT NULL,
-    "userCourseId" TEXT NOT NULL,
-    "completedLessons" INTEGER NOT NULL DEFAULT 0,
-    "totalLessons" INTEGER NOT NULL DEFAULT 0,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "UserCourseProgress_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -87,7 +55,13 @@ CREATE TABLE "LessonActivity" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "lessonsId" TEXT NOT NULL,
+    "courseId" TEXT,
     "watchedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "score" INTEGER,
+    "vocabularyCorrect" INTEGER NOT NULL DEFAULT 0,
+    "vocabularyWrong" INTEGER NOT NULL DEFAULT 0,
+    "quizCorrect" INTEGER NOT NULL DEFAULT 0,
+    "quizWrong" INTEGER NOT NULL DEFAULT 0,
 
     CONSTRAINT "LessonActivity_pkey" PRIMARY KEY ("id")
 );
@@ -113,29 +87,6 @@ CREATE TABLE "Dictonary" (
     "lessonsId" TEXT NOT NULL,
 
     CONSTRAINT "Dictonary_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "UserGift" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "title" TEXT NOT NULL,
-    "reason" TEXT NOT NULL,
-    "awardedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "UserGift_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "DailyActivityLog" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "date" TIMESTAMP(3) NOT NULL,
-    "lessonsWatched" INTEGER NOT NULL,
-    "wordsLearned" INTEGER NOT NULL,
-    "testsPassed" INTEGER NOT NULL,
-
-    CONSTRAINT "DailyActivityLog_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -180,6 +131,17 @@ CREATE TABLE "Quessions" (
     CONSTRAINT "Quessions_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "LessonAIUsage" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "lessonId" TEXT NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL,
+    "count" INTEGER NOT NULL DEFAULT 0,
+
+    CONSTRAINT "LessonAIUsage_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
@@ -195,26 +157,14 @@ CREATE UNIQUE INDEX "NotificationRecipient_userId_notificationId_key" ON "Notifi
 -- CreateIndex
 CREATE UNIQUE INDEX "NotificationRead_userId_notificationId_key" ON "NotificationRead"("userId", "notificationId");
 
--- AddForeignKey
-ALTER TABLE "VocabularyResult" ADD CONSTRAINT "VocabularyResult_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "VocabularyResult" ADD CONSTRAINT "VocabularyResult_wordId_fkey" FOREIGN KEY ("wordId") REFERENCES "Dictonary"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "QuizResult" ADD CONSTRAINT "QuizResult_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "QuizResult" ADD CONSTRAINT "QuizResult_quizId_fkey" FOREIGN KEY ("quizId") REFERENCES "Quizs"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+-- CreateIndex
+CREATE UNIQUE INDEX "LessonAIUsage_userId_lessonId_date_key" ON "LessonAIUsage"("userId", "lessonId", "date");
 
 -- AddForeignKey
 ALTER TABLE "UserCourse" ADD CONSTRAINT "UserCourse_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "UserCourse" ADD CONSTRAINT "UserCourse_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES "CoursesCategory"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "UserCourseProgress" ADD CONSTRAINT "UserCourseProgress_userCourseId_fkey" FOREIGN KEY ("userCourseId") REFERENCES "UserCourse"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Lessons" ADD CONSTRAINT "Lessons_coursesCategoryId_fkey" FOREIGN KEY ("coursesCategoryId") REFERENCES "CoursesCategory"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -226,16 +176,13 @@ ALTER TABLE "LessonActivity" ADD CONSTRAINT "LessonActivity_userId_fkey" FOREIGN
 ALTER TABLE "LessonActivity" ADD CONSTRAINT "LessonActivity_lessonsId_fkey" FOREIGN KEY ("lessonsId") REFERENCES "Lessons"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "LessonActivity" ADD CONSTRAINT "LessonActivity_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES "CoursesCategory"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Quizs" ADD CONSTRAINT "Quizs_lessonsId_fkey" FOREIGN KEY ("lessonsId") REFERENCES "Lessons"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Dictonary" ADD CONSTRAINT "Dictonary_lessonsId_fkey" FOREIGN KEY ("lessonsId") REFERENCES "Lessons"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "UserGift" ADD CONSTRAINT "UserGift_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "DailyActivityLog" ADD CONSTRAINT "DailyActivityLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Notification" ADD CONSTRAINT "Notification_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES "CoursesCategory"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -254,3 +201,6 @@ ALTER TABLE "NotificationRead" ADD CONSTRAINT "NotificationRead_notificationId_f
 
 -- AddForeignKey
 ALTER TABLE "Quessions" ADD CONSTRAINT "Quessions_lessonsId_fkey" FOREIGN KEY ("lessonsId") REFERENCES "Lessons"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "LessonAIUsage" ADD CONSTRAINT "LessonAIUsage_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

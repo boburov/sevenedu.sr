@@ -397,4 +397,33 @@ export class UserService {
     return lessonDetails;
   }
 
+  async getCertificate(userId: string, courseId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        name: true,
+        surname: true,
+        email: true,
+        profilePic: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Foydalanuvchi topilmadi');
+    }
+
+    const course = await this.prisma.userCourse.findUnique({
+      where: { id: courseId },
+    });
+
+    if (!course) {
+      throw new NotFoundException('Kurs topilmadi');
+    }
+
+    const updateCourse = await this.prisma.userCourse.update({
+      where: { id: courseId },
+      data: { isFinished: true },
+    })
+
+  }
 }

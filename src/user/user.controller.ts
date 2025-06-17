@@ -124,6 +124,10 @@ export class UserController {
     return this.userService.assignCourse(body.email, body.courseId);
   }
 
+  @Post("get-certificate")
+  async getCertificate(@Body() body: { userId: string; courseId: string }) {
+    return this.userService.getCertificate(body.userId, body.courseId);
+  }
 
   @Post('updateProfilePic/:id')
   @UseInterceptors(FileInterceptor('profilePic'))
