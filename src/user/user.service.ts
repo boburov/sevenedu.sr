@@ -426,4 +426,26 @@ export class UserService {
     })
 
   }
+
+
+  async addCoins(userId: string, coins: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { coins: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Foydalanuvchi topilmadi');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: { coins: user.coins + coins },
+    });
+
+    return {
+      message: 'Coins qo‘shildi',
+      coins: updatedUser.coins,
+    };
+  }
 }

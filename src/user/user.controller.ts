@@ -117,6 +117,15 @@ export class UserController {
     return this.userService.updateUser(id, updateUserDto,);
   }
 
+  @Post("coins")
+  async addCoins(@Body() body: { userId: string; coins: number }) {
+    const { userId, coins } = body;
+    if (!userId || !coins) {
+      throw new BadRequestException('User ID va coins kiritilishi shart');
+    }
+    return this.userService.addCoins(userId, coins);
+  }
+
   @Post('assign-course')
   async assignCourseToUser(
     @Body() body: { email: string; courseId: string }
