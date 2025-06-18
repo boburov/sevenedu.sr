@@ -128,8 +128,8 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   @Post('mark-lesson-seen')
   async markLessonSeen(
-    @Req() req,
-    @Body() body: { lessonId: string }
+    @Body() body: { lessonId: string },
+    @Req() req
   ) {
     const userId = req.user.id;
     return this.userService.markLessonAsSeen(userId, body.lessonId);
