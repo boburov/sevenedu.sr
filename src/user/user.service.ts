@@ -427,6 +427,29 @@ export class UserService {
 
   }
 
+  async markLessonAsSeen(userId: string, lessonId: string) {
+    const existing = await this.prisma.lessonActivity.findFirst({
+      where: {
+        userId,
+        lessonsId: lessonId,
+      },
+    });
+
+    if (existing) {
+      return { message: 'Bu dars allaqachon ko‘rilgan' };
+    }
+
+    await this.prisma.lessonActivity.create({
+      data: {
+        userId,
+        lessonsId: lessonId,
+        watchedAt: new Date(), // vaqtni ham yozamiz
+      },
+    });
+
+    return { message: 'Dars ko‘rilgan deb belgilandi' };
+  }
+
 
   async addCoins(userId: string, coins: number) {
     const user = await this.prisma.user.findUnique({

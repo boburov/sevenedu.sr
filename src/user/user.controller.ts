@@ -4,7 +4,6 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { AuthGuard } from '@nestjs/passport';
 
 @Controller('user')
 export class UserController {
@@ -125,6 +124,17 @@ export class UserController {
     }
     return this.userService.addCoins(userId, coins);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('mark-lesson-seen')
+  async markLessonSeen(
+    @Req() req,
+    @Body() body: { lessonId: string }
+  ) {
+    const userId = req.user.id;
+    return this.userService.markLessonAsSeen(userId, body.lessonId);
+  }
+
 
   @Post('assign-course')
   async assignCourseToUser(
