@@ -10,6 +10,7 @@ async function bootstrap() {
   }));
 
   app.enableCors({
+    origin: ['https://sevenedu.uz', 'https://www.sevenedu.uz'],
     credentials: true,
   })
 
