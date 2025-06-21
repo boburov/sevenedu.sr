@@ -24,8 +24,11 @@ export class NotificationsController {
     return await this.notificationsService.getNotificationById(id);
   }
 
-  @Post("send:id")
-  async sendNotificationToUser(@Param('id') id: string, @Body() dto: CreateNotificationDto) {
+  @Post('send/:id')
+  async sendNotificationToUser(
+    @Param('id') id: string,
+    @Body() dto: CreateNotificationDto,
+  ) {
     return await this.notificationsService.createNotificationForCourseUsers(id, dto);
   }
 
