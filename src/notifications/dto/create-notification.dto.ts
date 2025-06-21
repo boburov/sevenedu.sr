@@ -1,4 +1,4 @@
-import { IsBoolean, IsString } from "class-validator";
+import { IsBoolean, IsOptional, IsString } from "class-validator";
 
 export class CreateNotificationDto {
   @IsString()
@@ -8,8 +8,14 @@ export class CreateNotificationDto {
   message: string;
 
   @IsBoolean()
+  @IsOptional()
   isGlobal?: boolean;
 
   @IsString()
+  @IsOptional()
   courseId?: string;
+
+  @IsString()
+  @IsOptional()
+  userId?: string;
 }

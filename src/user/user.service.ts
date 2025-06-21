@@ -327,7 +327,7 @@ export class UserService {
         },
         test: {
           correct: testCorrect,
-          total: testTotal * 100, // agar test 100 ballik bo‘lsa
+          total: testTotal * 100,
         },
       };
     });
@@ -443,7 +443,7 @@ export class UserService {
       data: {
         userId,
         lessonsId: lessonId,
-        watchedAt: new Date(), // vaqtni ham yozamiz
+        watchedAt: new Date(),
       },
     });
 

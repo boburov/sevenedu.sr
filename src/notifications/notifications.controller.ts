@@ -14,8 +14,6 @@ import { NotificationRecipientDto } from './dto/update-ntf.dto';
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) { }
 
-  
-
   @Get()
   async getAll() {
     return await this.notificationsService.getAllNotifications();
@@ -24,6 +22,11 @@ export class NotificationsController {
   @Get(':id')
   async getOne(@Param('id') id: string) {
     return await this.notificationsService.getNotificationById(id);
+  }
+
+  @Post("send:id")
+  async sendNotificationToUser(@Param('id') id: string, @Body() dto: CreateNotificationDto) {
+    return await this.notificationsService.createNotificationForCourseUsers(id, dto);
   }
 
   @Post('create')
