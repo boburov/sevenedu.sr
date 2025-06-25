@@ -9,10 +9,12 @@ async function bootstrap() {
     transform: true,
   }));
 
-  app.enableCors({
-    origin: ['https://sevenedu.uz', 'https://www.sevenedu.uz'],
-    credentials: true,
-  })
+ app.enableCors({
+  origin: ['https://sevenedu.uz'],
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+});
 
   await app.listen(process.env.PORT ?? 3000);
 }
