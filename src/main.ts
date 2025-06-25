@@ -10,7 +10,7 @@ async function bootstrap() {
   }));
 
  app.enableCors({
-  origin: ['https://sevenedu.uz'],
+  origin: 'https://sevenedu.uz',
   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
