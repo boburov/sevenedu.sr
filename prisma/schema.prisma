@@ -28,6 +28,7 @@ model User {
   notificationsRead    NotificationRead[]
   lessonAIUsage        LessonAIUsage[]
   VocabularyTestResult VocabularyTestResult[]
+  Certificate          Certificate[]
 }
 
 model VocabularyTestResult {
@@ -52,6 +53,7 @@ model CoursesCategory {
   users          UserCourse[]
   notifications  Notification[]
   LessonActivity LessonActivity[]
+  Certificate    Certificate[]
 }
 
 model UserCourse {
@@ -180,4 +182,17 @@ model LessonAIUsage {
   user User @relation(fields: [userId], references: [id])
 
   @@unique([userId, lessonId, date])
+}
+
+model Certificate {
+  id       String   @id @default(uuid())
+  userId   String
+  courseId String
+  score    Int
+  issuedAt DateTime @default(now())
+
+  user   User            @relation(fields: [userId], references: [id])
+  course CoursesCategory @relation(fields: [courseId], references: [id])
+
+  @@unique([userId, courseId])
 }
