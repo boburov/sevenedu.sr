@@ -22,13 +22,14 @@ model User {
   codeExpiresAt        DateTime?
   createdAt            DateTime                @default(now())
   updatedAt            DateTime                @updatedAt
+  lastLoginAt          DateTime?
   courses              UserCourse[]
   showedLesson         LessonActivity[]
   notifications        NotificationRecipient[]
   notificationsRead    NotificationRead[]
   lessonAIUsage        LessonAIUsage[]
   VocabularyTestResult VocabularyTestResult[]
-  Certificate          Certificate[]
+  certificate          Certificate[]
 }
 
 model VocabularyTestResult {
@@ -53,7 +54,7 @@ model CoursesCategory {
   users          UserCourse[]
   notifications  Notification[]
   LessonActivity LessonActivity[]
-  Certificate    Certificate[]
+  certificate    Certificate[]
 }
 
 model UserCourse {
