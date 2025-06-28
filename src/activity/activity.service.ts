@@ -21,19 +21,13 @@ export class ActivityService {
           lt: tomorrow,
         },
       },
-      select: {
-        lessonsId: true,
-        vocabularyCorrect: true,
-        vocabularyWrong: true,
-        quizCorrect: true,
-        quizWrong: true,
-        score: true,
-        watchedAt: true,
-      },
     });
+
+    const isWatched = activities.length > 0;
 
     return {
       date: today.toISOString().split('T')[0],
+      watched: isWatched, // frontend faqat shu bilan ham ishlay oladi
       totalLessons: activities.length,
       totalVocabularyCorrect: activities.reduce((sum, act) => sum + (act.vocabularyCorrect || 0), 0),
       totalVocabularyWrong: activities.reduce((sum, act) => sum + (act.vocabularyWrong || 0), 0),
@@ -45,7 +39,6 @@ export class ActivityService {
       lessons: activities,
     };
   }
-
 
   async showedLessons(dto: { userId: string; lessonId: string, }) {
     const { userId, lessonId } = dto;
@@ -132,6 +125,5 @@ export class ActivityService {
 
     return { msg: "updated successfully" };
   }
-
 
 }
