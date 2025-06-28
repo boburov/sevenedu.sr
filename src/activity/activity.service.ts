@@ -3,7 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { format, subDays, eachDayOfInterval } from 'date-fns';
 
 @Injectable()
-export class LessonActivityService {
+export class ActivityService {
   constructor(private prisma: PrismaService) {}
 
   async markLesson(

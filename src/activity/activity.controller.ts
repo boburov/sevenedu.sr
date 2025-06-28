@@ -8,12 +8,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { LessonActivityService } from './activity.service';
+import { ActivityService } from './activity.service';
 
 @Controller('lesson-activity')
 @UseGuards(JwtAuthGuard)
-export class LessonActivityController {
-  constructor(private readonly service: LessonActivityService) {}
+export class ActivityController {
+  constructor(private readonly service: ActivityService) {}
 
   @Post('mark')
   markLesson(@Req() req, @Body() body: {

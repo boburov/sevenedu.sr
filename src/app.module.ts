@@ -14,7 +14,6 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationsModule } from './notifications/notifications.module';
 import { DictonaryModule } from './dictonary/dictonary.module';
 import { ActivityModule } from './activity/activity.module';
-import { ActivityModule } from './activity/activity.module';
 
 @Module({
   imports: [
