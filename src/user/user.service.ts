@@ -1,17 +1,13 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-  InternalServerErrorException,
-  HttpException,
-} from '@nestjs/common';
+import { ForbiddenException, HttpException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UploadsService } from 'src/uploads/uploads.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 import OpenAI from 'openai';
 import { ConfigService } from '@nestjs/config';
-import { eachDayOfInterval, subDays, format } from 'date-fns';
+import { eachDayOfInterval, subDays } from 'date-fns';
+import { format } from 'date-fns';
+
 
 @Injectable()
 export class UserService {
@@ -21,88 +17,215 @@ export class UserService {
     private uploadService: UploadsService,
     private config: ConfigService,
   ) {
-    this.openai = new OpenAI({ apiKey: this.config.getOrThrow('OPENAI_API_KEY') });
+    this.openai = new OpenAI({
+      apiKey: this.config.getOrThrow('OPENAI_API_KEY')
+    });
   }
 
-  checkEmail(email: string) {
-    return this.prisma.user.findUnique({ where: { email }, select: { id: true } });
+  async updateUser(id: string, updateUser: UpdateUserDto) {
+    if (!updateUser) {
+      throw new HttpException('Body kiritilmagan', 400);
+    }
+
+    const { name, surname, phonenumber, email, password } = updateUser;
+
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new HttpException('Foydalanuvchi topilmadi', 404);
+    }
+
+    if (email && email !== user.email) {
+      const existingEmail = await this.prisma.user.findFirst({ where: { email } });
+      if (existingEmail) {
+        throw new HttpException('Bu email allaqachon ishlatilmoqda', 400);
+      }
+    }
+
+    let hashedPassword = user.password;
+    if (password) {
+      hashedPassword = await bcrypt.hash(password, 10);
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id },
+      data: {
+        name,
+        surname,
+        phonenumber,
+        email,
+        password: hashedPassword,
+      },
+    });
+
+    const { password: _password, ...userWithoutPassword } = updatedUser;
+    return {
+      msg: 'User yangilandi',
+      user: userWithoutPassword,
+    };
   }
 
   async allUser() {
-    return this.prisma.user.findMany({
-      select: {
-        certificate: true,
-        lastLoginAt: true,
-        showedLesson: { include: { lesson: true } },
-        notifications: { include: { notification: true } },
+    return await this.prisma.user.findMany({
+      include: {
+        showedLesson: {
+          include: {
+            lesson: true
+          }
+        },
+        notifications: {
+          include: {
+            notification: true,
+          },
+        },
       },
     });
   }
 
-  getUserByEmail(email: string) {
-    return this.prisma.user.findUnique({
+  async assignCourse(email: string, courseId: string) {
+    const user = await this.prisma.user.findUnique({
       where: { email },
-      select: { id: true, email: true },
     });
+
+    if (!user) {
+      throw new NotFoundException('Foydalanuvchi topilmadi');
+    }
+
+    const exists = await this.prisma.userCourse.findFirst({
+      where: {
+        userId: user.id,
+        courseId,
+      },
+    });
+
+    if (exists) {
+      return { message: 'Bu kurs allaqachon foydalanuvchida mavjud' };
+    }
+
+    await this.prisma.userCourse.create({
+      data: {
+        userId: user.id,
+        courseId,
+      },
+    });
+
+    return { message: 'Kurs foydalanuvchiga qo‘shildi' };
   }
 
-  getUserById(id: string) {
+  async getUserById(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
       include: {
-        notifications: { include: { notification: true } },
+        notifications: {
+          include: {
+            notification: true,
+          },
+        },
       },
     });
   }
 
-  async updateUser(id: string, dto: UpdateUserDto) {
-    const user = await this.prisma.user.findUnique({ where: { id } });
-    if (!user) throw new HttpException('Foydalanuvchi topilmadi', 404);
-
-    if (dto.email && dto.email !== user.email) {
-      const emailExists = await this.prisma.user.findFirst({ where: { email: dto.email } });
-      if (emailExists) throw new HttpException('Email band', 400);
-    }
-
-    if (dto.password) dto.password = await bcrypt.hash(dto.password, 10);
-
-    const updated = await this.prisma.user.update({ where: { id }, data: dto });
-    const { password, ...userWithoutPassword } = updated;
-    return { msg: 'User yangilandi', user: userWithoutPassword };
-  }
-
-  updateProfilePic(id: string, file: Express.Multer.File) {
-    return this.uploadService.uploadFile(file, 'images').then((url) =>
-      this.prisma.user.update({ where: { id }, data: { profilePic: url } })
-    );
+  async updateProfilePic(id: string, file: Express.Multer.File) {
+    const imageUrl = await this.uploadService.uploadFile(file, 'images');
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        profilePic: imageUrl,
+      },
+    });
   }
 
   async deleteProfilePic(id: string) {
     const user = await this.prisma.user.findUnique({ where: { id } });
-    if (!user) throw new NotFoundException('User not found');
-    if (user.profilePic) await this.uploadService.deleteFile(user.profilePic);
-    return this.prisma.user.update({ where: { id }, data: { profilePic: '' } });
-  }
+    if (!user) {
+      throw new Error('User not found');
+    }
 
-  async assignCourse(email: string, courseId: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user) throw new NotFoundException('Foydalanuvchi topilmadi');
+    if (user.profilePic) {
+      await this.uploadService.deleteFile(user.profilePic);
+    }
 
-    const exists = await this.prisma.userCourse.findFirst({
-      where: { userId: user.id, courseId },
-    });
-    if (exists) return { message: 'Kurs allaqachon mavjud' };
-
-    await this.prisma.userCourse.create({ data: { userId: user.id, courseId } });
-    return { message: 'Kurs qo‘shildi' };
-  }
-
-  addCoins(userId: string, coins: number) {
     return this.prisma.user.update({
-      where: { id: userId },
-      data: { coins: { increment: coins } },
-      select: { coins: true },
-    }).then(res => ({ message: 'Coins qo‘shildi', coins: res.coins }));
+      where: { id },
+      data: { profilePic: '' },
+    });
+  }
+
+  async findByEmail(email: string) {
+    return this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        name: true,
+        courses: true,
+        coins: true,
+        email: true,
+        phonenumber: true,
+        profilePic: true,
+        code: true,
+      },
+    });
+  }
+
+  async deleteUser() {
+    await this.prisma.user.deleteMany();
+    return { msg: 'Deleted' };
+  }
+
+  async getLessonStats(userId: string) {
+    const totalLessons = await this.prisma.lessons.count();
+    const completedLessons = await this.prisma.lessonActivity.count({ where: { userId } });
+    return {
+      totalLessons,
+      completedLessons,
+      completionRate: Number(((completedLessons / totalLessons) * 100).toFixed(2)),
+    };
+  }
+
+  async chatWithAI(userId: string, lessonId: string, message: string): Promise<string> {
+    const today = new Date();
+    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+
+    let usage = await this.prisma.lessonAIUsage.findFirst({
+      where: {
+        userId,
+        lessonId,
+        date: { gte: startOfDay },
+      },
+    });
+
+    if (!usage) {
+      usage = await this.prisma.lessonAIUsage.create({
+        data: {
+          userId,
+          lessonId,
+          date: new Date(),
+          count: 1,
+        },
+      });
+    } else if (usage.count >= 10) {
+      throw new ForbiddenException('Siz bugungi 10 ta kreditdan foydalandingiz.');
+    } else {
+      await this.prisma.lessonAIUsage.update({
+        where: { id: usage.id },
+        data: { count: { increment: 1 } },
+      });
+    }
+
+    const completion = await this.openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: `Siz foydalanuvchiga til o‘rgatadigan ustozsiz. Har savolga aniq, qisqa, o‘zbek tilida javob bering. Dars mavzusidan chiqmay javob bering.`,
+        },
+        {
+          role: 'user',
+          content: message,
+        },
+      ],
+    });
+
+    return completion.choices[0].message?.content ?? 'Javob topilmadi.';
   }
 
   async getUserProgress(userId: string) {
@@ -111,174 +234,241 @@ export class UserService {
       include: { showedLesson: true },
     });
 
-    const init = { vocabC: 0, vocabW: 0, quizC: 0, quizW: 0, tests: 0 };
-    user?.showedLesson.forEach((l) => {
-      init.vocabC += l.vocabularyCorrect;
-      init.vocabW += l.vocabularyWrong;
-      init.quizC += l.quizCorrect;
-      init.quizW += l.quizWrong;
-      init.tests += 1;
+    let vocabularyCorrect = 0;
+    let vocabularyWrong = 0;
+    let quizCorrect = 0;
+    let quizWrong = 0;
+    let testScore = 0;
+    let testCount = 0;
+
+    user?.showedLesson.forEach((lesson) => {
+      vocabularyCorrect += lesson.vocabularyCorrect;
+      vocabularyWrong += lesson.vocabularyWrong;
+      quizCorrect += lesson.quizCorrect;
+      quizWrong += lesson.quizWrong;
+      testCount += 1;
     });
 
     return {
-      vocabulary: { correct: init.vocabC, total: init.vocabC + init.vocabW },
-      quiz: { correct: init.quizC, total: init.quizC + init.quizW },
-      test: { correct: 0, total: init.tests * 100 },
+      vocabulary: {
+        correct: vocabularyCorrect,
+        total: vocabularyCorrect + vocabularyWrong,
+      },
+      quiz: {
+        correct: quizCorrect,
+        total: quizCorrect + quizWrong,
+      },
+      test: {
+        correct: testScore,
+        total: testCount * 100,
+      },
     };
   }
 
   async getDailyStats(userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { createdAt: true } });
-    if (!user) throw new NotFoundException('User not found');
-
-    const today = new Date();
-    const start = user.createdAt || subDays(today, 30);
-    const days = eachDayOfInterval({ start, end: today });
-
-    const activity = await this.prisma.lessonActivity.findMany({
-      where: { userId, watchedAt: { gte: start, lte: today } },
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { createdAt: true },
     });
 
-    return days.map((day) => {
-      const key = format(day, 'yyyy-MM-dd');
-      const daily = activity.filter((a) => format(a.watchedAt, 'yyyy-MM-dd') === key);
-      const [vocabC, vocabW, quizC, quizW, testS] = daily.reduce(
-        (acc, item) => [
-          acc[0] + (item.vocabularyCorrect || 0),
-          acc[1] + (item.vocabularyWrong || 0),
-          acc[2] + (item.quizCorrect || 0),
-          acc[3] + (item.quizWrong || 0),
-          acc[4] + (item.score || 0),
-        ],
-        [0, 0, 0, 0, 0],
+    if (!user) throw new NotFoundException('Foydalanuvchi topilmadi');
+
+    const today = new Date();
+    const startDate = user.createdAt || subDays(today, 30);
+    const days = eachDayOfInterval({ start: startDate, end: today });
+
+    const lessonActivities = await this.prisma.lessonActivity.findMany({
+      where: {
+        userId,
+        watchedAt: { gte: startDate, lte: today },
+      },
+    });
+
+    const dailyStats = days.map((day) => {
+      const dateKey = format(day, 'yyyy-MM-dd');
+
+      const filtered = lessonActivities.filter(
+        (a) => format(a.watchedAt, 'yyyy-MM-dd') === dateKey
       );
-      const testCount = daily.filter((d) => d.score !== null).length;
+
+      const vocabularyCorrect = filtered.reduce(
+        (sum, item) => sum + (item.vocabularyCorrect || 0),
+        0
+      );
+      const vocabularyWrong = filtered.reduce(
+        (sum, item) => sum + (item.vocabularyWrong || 0),
+        0
+      );
+
+      const quizCorrect = filtered.reduce(
+        (sum, item) => sum + (item.quizCorrect || 0),
+        0
+      );
+      const quizWrong = filtered.reduce(
+        (sum, item) => sum + (item.quizWrong || 0),
+        0
+      );
+
+      const testTotal = filtered.filter((item) => item.score !== null && item.score !== undefined).length;
+      const testCorrect = filtered.reduce(
+        (sum, item) => sum + (item.score || 0),
+        0
+      );
 
       return {
-        date: key,
-        vocabulary: { correct: vocabC, total: vocabC + vocabW },
-        quiz: { correct: quizC, total: quizC + quizW },
-        test: { correct: testS, total: testCount * 100 },
+        date: dateKey,
+        vocabulary: {
+          correct: vocabularyCorrect,
+          total: vocabularyCorrect + vocabularyWrong,
+        },
+        quiz: {
+          correct: quizCorrect,
+          total: quizCorrect + quizWrong,
+        },
+        test: {
+          correct: testCorrect,
+          total: testTotal * 100,
+        },
       };
     });
+
+    return dailyStats;
   }
 
-  async getStatsByRange(userId: string, range: 'daily' | 'monthly') {
-    const today = new Date();
-    const start = subDays(today, range === 'daily' ? 30 : 365);
+  async getActivityByUser(userId: string) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { createdAt: true },
+      });
 
-    const data = await this.prisma.lessonActivity.findMany({
-      where: { userId, watchedAt: { gte: start, lte: today } },
-    });
+      const activity = await this.prisma.lessonActivity.findMany({
+        where: { userId },
+        select: {
+          watchedAt: true,
+          vocabularyCorrect: true,
+          vocabularyWrong: true,
+        },
+      });
 
-    const grouped = {};
-    for (const entry of data) {
-      const key = format(entry.watchedAt, range === 'daily' ? 'yyyy-MM-dd' : 'yyyy-MM');
-      grouped[key] ??= { vocabC: 0, vocabW: 0, quizC: 0, quizW: 0, testS: 0, testC: 0 };
-
-      grouped[key].vocabC += entry.vocabularyCorrect;
-      grouped[key].vocabW += entry.vocabularyWrong;
-      grouped[key].quizC += entry.quizCorrect;
-      grouped[key].quizW += entry.quizWrong;
-      if (entry.score != null) {
-        grouped[key].testS += entry.score;
-        grouped[key].testC += 1;
-      }
+      return {
+        createdAt: user?.createdAt,
+        activity,
+      };
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to get user activity');
     }
-
-    return Object.entries(grouped).map(([date, d]: any) => ({
-      date,
-      vocabulary: { correct: d.vocabC, total: d.vocabC + d.vocabW },
-      quiz: { correct: d.quizC, total: d.quizC + d.quizW },
-      test: { correct: d.testS, total: d.testC * 100 },
-    }));
   }
 
   async getLessonDetailsPerUser(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { showedLesson: { include: { lesson: true } } },
+      include: {
+        showedLesson: {
+          include: {
+            lesson: true,
+          },
+        },
+      },
     });
-    if (!user) throw new NotFoundException('User not found');
 
-    return user.showedLesson.map((s) => ({
-      lessonId: s.lesson.id,
-      title: s.lesson.title,
-      watchedAt: s.watchedAt,
+    if (!user) throw new NotFoundException('Foydalanuvchi topilmadi');
+
+    const lessonDetails = user.showedLesson.map((entry) => ({
+      lessonId: entry.lesson.id,
+      title: entry.lesson.title,
+      watchedAt: entry.watchedAt,
       vocabulary: {
-        correct: s.vocabularyCorrect,
-        wrong: s.vocabularyWrong,
-        total: s.vocabularyCorrect + s.vocabularyWrong,
+        correct: entry.vocabularyCorrect,
+        wrong: entry.vocabularyWrong,
+        total: entry.vocabularyCorrect + entry.vocabularyWrong,
       },
       quiz: {
-        correct: s.quizCorrect,
-        wrong: s.quizWrong,
-        total: s.quizCorrect + s.quizWrong,
+        correct: entry.quizCorrect,
+        wrong: entry.quizWrong,
+        total: entry.quizCorrect + entry.quizWrong,
       },
-      test: { score: s.score ?? 0, total: 100 },
+      test: {
+        score: entry.score ?? 0,
+        total: 100,
+      },
     }));
-  }
 
-  async chatWithAI(userId: string, lessonId: string, message: string) {
-    const today = new Date();
-    const start = new Date(today.setHours(0, 0, 0, 0));
-    const usage = await this.prisma.lessonAIUsage.findFirst({
-      where: { userId, lessonId, date: { gte: start } },
-    });
-
-    if (!usage)
-      await this.prisma.lessonAIUsage.create({ data: { userId, lessonId, date: new Date(), count: 1 } });
-    else if (usage.count >= 10)
-      throw new ForbiddenException('Bugungi limit tugagan');
-    else
-      await this.prisma.lessonAIUsage.update({ where: { id: usage.id }, data: { count: { increment: 1 } } });
-
-    const res = await this.openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        { role: 'system', content: 'Siz til o‘rgatadigan ustozsiz. Javoblar qisqa va o‘zbek tilida bo‘lsin.' },
-        { role: 'user', content: message },
-      ],
-    });
-
-    return { answer: res.choices[0].message?.content || 'Javob topilmadi' };
-  }
-
-  async getAIUsage(userId: string, lessonId: string) {
-    const today = new Date();
-    const start = new Date(today.setHours(0, 0, 0, 0));
-    const usage = await this.prisma.lessonAIUsage.findFirst({
-      where: { userId, lessonId, date: { gte: start } },
-    });
-    return { count: usage?.count || 0 };
+    return lessonDetails;
   }
 
   async getCertificate(userId: string, courseId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { name: true, surname: true, email: true, profilePic: true },
+      select: {
+        name: true,
+        surname: true,
+        email: true,
+        profilePic: true,
+      },
     });
-    if (!user) throw new NotFoundException('Foydalanuvchi topilmadi');
 
-    const course = await this.prisma.userCourse.findUnique({ where: { id: courseId } });
-    if (!course) throw new NotFoundException('Kurs topilmadi');
+    if (!user) {
+      throw new NotFoundException('Foydalanuvchi topilmadi');
+    }
 
-    await this.prisma.userCourse.update({ where: { id: courseId }, data: { isFinished: true } });
+    const course = await this.prisma.userCourse.findUnique({
+      where: { id: courseId },
+    });
+
+    if (!course) {
+      throw new NotFoundException('Kurs topilmadi');
+    }
+
+    const updateCourse = await this.prisma.userCourse.update({
+      where: { id: courseId },
+      data: { isFinished: true },
+    })
+
   }
 
   async markLessonAsSeen(userId: string, lessonId: string) {
     const existing = await this.prisma.lessonActivity.findFirst({
-      where: { userId, lessonsId: lessonId },
+      where: {
+        userId,
+        lessonsId: lessonId,
+      },
     });
-    if (existing) return { message: 'Oldin ko‘rilgan' };
+
+    if (existing) {
+      return { message: 'Bu dars allaqachon ko‘rilgan' };
+    }
 
     await this.prisma.lessonActivity.create({
-      data: { userId, lessonsId: lessonId, watchedAt: new Date() },
+      data: {
+        userId,
+        lessonsId: lessonId,
+        watchedAt: new Date(),
+      },
     });
+
     return { message: 'Dars ko‘rilgan deb belgilandi' };
   }
 
-  deleteUser() {
-    return this.prisma.user.deleteMany().then(() => ({ msg: 'Deleted' }));
+
+  async addCoins(userId: string, coins: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { coins: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Foydalanuvchi topilmadi');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: { coins: user.coins + coins },
+    });
+
+    return {
+      message: 'Coins qo‘shildi',
+      coins: updatedUser.coins,
+    };
   }
 }

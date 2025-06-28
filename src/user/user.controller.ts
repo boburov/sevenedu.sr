@@ -1,119 +1,150 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-  Req,
-  UploadedFile,
-  UseGuards,
-  UseInterceptors,
-  BadRequestException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Query, Req, UploadedFile, UseGuards, UseInterceptors, HttpException, Post, NotFoundException, BadRequestException } from '@nestjs/common';
+import { UserService } from './user.service';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { UserService } from './user.service';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService, private prisma: PrismaService) { }
 
   @Get('all')
-  allUser() {
+  async allUser() {
     return this.userService.allUser();
   }
 
   @Get('check')
-  checkEmail(@Query('email') email: string) {
-    if (!email) throw new BadRequestException('Email kiritilmagan');
-    return this.userService.checkEmail(email);
+  async checkEmail(@Query('email') email: string) {
+    if (!email) {
+      throw new BadRequestException('Email kiritilmagan');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+
+    if (user) {
+      throw new HttpException('Bu email allaqachon ishlatilmoqda', 400);
+    }
+
+    return { available: true };
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('user-progress')
-  getUserProgress(@Req() req) {
-    return this.userService.getUserProgress(req.user.id);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get('activity-range')
-  getStatsByRange(
-    @Req() req,
-    @Query('range') range: 'daily' | 'monthly' = 'daily',
-  ) {
-    return this.userService.getStatsByRange(req.user.id, range);
+  @Get("user-progress")
+  async getUserProgress(@Req() req) {
+    const userId = req.user.id;
+    return this.userService.getUserProgress(userId);
   }
 
   @Get(':id/lesson-details')
-  getLessonDetails(@Param('id') id: string) {
-    return this.userService.getLessonDetailsPerUser(id);
+  getLessonDetails(@Param('id') userId: string) {
+    return this.userService.getLessonDetailsPerUser(userId);
   }
 
   @Get('by-email')
-  getUserByEmail(@Query('email') email: string) {
-    if (!email) throw new BadRequestException('Email kiritilmagan');
-    return this.userService.getUserByEmail(email);
+  async getUserByEmail(@Query('email') email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Bunday email topilmadi');
+    }
+
+    return user;
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('daily-stats')
-  getDailyStats(@Req() req) {
+  async getDailyStats(@Req() req: Request & { user: { id: string } }) {
     return this.userService.getDailyStats(req.user.id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('chat')
-  chatWithAI(
+  async chatWithAI(
     @Body() body: { lessonId: string; message: string },
     @Req() req,
-  ) {
-    return this.userService.chatWithAI(req.user.id, body.lessonId, body.message);
+  ): Promise<{ answer: string }> {
+    const userId = req.user.id;
+    const answer = await this.userService.chatWithAI(userId, body.lessonId, body.message);
+    return { answer };
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('ai-usage')
-  getUsage(@Query('lessonId') lessonId: string, @Req() req) {
-    return this.userService.getAIUsage(req.user.id, lessonId);
+  @UseGuards(JwtAuthGuard)
+  async getUsage(
+    @Query('lessonId') lessonId: string,
+    @Req() req,
+  ): Promise<{ count: number }> {
+    const userId = req.user.id;
+    const today = new Date();
+    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+
+    const usage = await this.prisma.lessonAIUsage.findFirst({
+      where: {
+        userId,
+        lessonId,
+        date: { gte: startOfDay },
+      },
+    });
+
+    return { count: usage?.count || 0 };
   }
 
   @Get(':id')
-  getUserById(@Param('id') id: string) {
+  async getUserById(@Param('id') id: string) {
     return this.userService.getUserById(id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('update/:id')
   @UseInterceptors(FileInterceptor('file'))
-  updateUser(
+  async UpdateUser(
     @UploadedFile() file: Express.Multer.File | undefined,
     @Param('id') id: string,
-    @Body() dto,
+    @Body() updateUserDto: UpdateUserDto,
   ) {
-    return this.userService.updateUser(id, dto);
+
+    return this.userService.updateUser(id, updateUserDto,);
   }
 
-  @Post('coins')
-  addCoins(@Body() body: { userId: string; coins: number }) {
-    return this.userService.addCoins(body.userId, body.coins);
+  @Post("coins")
+  async addCoins(@Body() body: { userId: string; coins: number }) {
+    const { userId, coins } = body;
+    if (!userId || !coins) {
+      throw new BadRequestException('User ID va coins kiritilishi shart');
+    }
+    return this.userService.addCoins(userId, coins);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('mark-lesson-seen')
-  markLessonSeen(@Body() body: { lessonId: string }, @Req() req) {
-    return this.userService.markLessonAsSeen(req.user.id, body.lessonId);
+  async markLessonSeen(
+    @Body() body: { lessonId: string },
+    @Req() req
+  ) {
+    const userId = req.user.id;
+    return this.userService.markLessonAsSeen(userId, body.lessonId);
   }
 
+
   @Post('assign-course')
-  assignCourse(@Body() body: { email: string; courseId: string }) {
+  async assignCourseToUser(
+    @Body() body: { email: string; courseId: string }
+  ) {
     return this.userService.assignCourse(body.email, body.courseId);
   }
 
-  @Post('get-certificate')
-  getCertificate(@Body() body: { userId: string; courseId: string }) {
+  @Post("get-certificate")
+  async getCertificate(@Body() body: { userId: string; courseId: string }) {
     return this.userService.getCertificate(body.userId, body.courseId);
   }
 
@@ -127,12 +158,13 @@ export class UserController {
   }
 
   @Delete('deleteProfilePic/:id')
-  deleteProfilePic(@Param('id') id: string) {
+  async deleteProfilePic(@Param('id') id: string) {
     return this.userService.deleteProfilePic(id);
   }
 
   @Delete('all')
-  deleteAllUsers() {
+  async deleteUser() {
     return this.userService.deleteUser();
   }
+
 }

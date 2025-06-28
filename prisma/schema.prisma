@@ -23,30 +23,14 @@ model User {
   createdAt            DateTime                @default(now())
   updatedAt            DateTime                @updatedAt
   lastLoginAt          DateTime?
-  activity             Activity[]
   courses              UserCourse[]
+  showedLesson         LessonActivity[]
   notifications        NotificationRecipient[]
   notificationsRead    NotificationRead[]
   lessonAIUsage        LessonAIUsage[]
   VocabularyTestResult VocabularyTestResult[]
   certificate          Certificate[]
 }
-
-model Activity {
-  id        String   @id @default(uuid())
-  userId    String
-  date      DateTime @default(now())
-
-  watchedLesson  Boolean  @default(false)
-  vocabularyLearned Int   @default(0)
-  testScore        Int    @default(0)
-  vocabTestScore   Int    @default(0)
-
-  User User @relation(fields: [userId], references: [id])
-
-  @@unique([userId, date])
-}
-
 
 model VocabularyTestResult {
   id      String   @id @default(uuid())
@@ -61,15 +45,16 @@ model VocabularyTestResult {
 }
 
 model CoursesCategory {
-  id            String         @id @default(uuid())
-  title         String
-  shortName     String
-  thumbnail     String
-  goal          String
-  lessons       Lessons[]      @relation("CategoryLessons")
-  users         UserCourse[]
-  notifications Notification[]
-  certificate   Certificate[]
+  id             String           @id @default(uuid())
+  title          String
+  shortName      String
+  thumbnail      String
+  goal           String
+  lessons        Lessons[]        @relation("CategoryLessons")
+  users          UserCourse[]
+  notifications  Notification[]
+  LessonActivity LessonActivity[]
+  certificate    Certificate[]
 }
 
 model UserCourse {
@@ -93,10 +78,33 @@ model Lessons {
   coursesCategoryId String
   coursesCategory   CoursesCategory @relation("CategoryLessons", fields: [coursesCategoryId], references: [id])
 
-  dictonary Dictonary[] @relation("Dictonary")
-  quizs     Quizs[]     @relation("Quizs")
-  questions Quessions[] @relation("Quessions")
+  dictonary      Dictonary[]      @relation("Dictonary")
+  quizs          Quizs[]          @relation("Quizs")
+  questions      Quessions[]      @relation("Quessions")
+  lessonActivity LessonActivity[]
 }
+
+model LessonActivity {
+  id        String   @id @default(uuid())
+  userId    String
+  lessonsId String
+  courseId  String?
+  watchedAt DateTime @default(now())
+  score     Int?
+
+  vocabularyCorrect Int @default(0)
+  vocabularyWrong   Int @default(0)
+
+  quizCorrect Int @default(0)
+  quizWrong   Int @default(0)
+
+  user   User             @relation(fields: [userId], references: [id])
+  lesson Lessons          @relation(fields: [lessonsId], references: [id])
+  course CoursesCategory? @relation(fields: [courseId], references: [id])
+
+  @@unique([userId, lessonsId])
+}
+
 
 model Quizs {
   id            String @id @default(uuid())

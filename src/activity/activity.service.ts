@@ -1,87 +1,96 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { startOfDay } from 'date-fns';
+import { format, subDays, eachDayOfInterval } from 'date-fns';
 
 @Injectable()
-export class ActivityService {
-  constructor(private readonly prisma: PrismaService) {}
+export class LessonActivityService {
+  constructor(private prisma: PrismaService) {}
 
-  private getToday(): Date {
-    return startOfDay(new Date());
-  }
+  async markLesson(
+    userId: string,
+    lessonId: string,
+    courseId: string,
+    data: {
+      vocabularyCorrect?: number;
+      vocabularyWrong?: number;
+      quizCorrect?: number;
+      quizWrong?: number;
+      score?: number;
+    },
+  ) {
+    const existing = await this.prisma.lessonActivity.findUnique({
+      where: {
+        userId_lessonsId: {
+          userId,
+          lessonsId: lessonId,
+        },
+      },
+    });
 
-  async markLessonViewed(userId: string) {
-    const today = this.getToday();
+    if (existing) {
+      return this.prisma.lessonActivity.update({
+        where: { userId_lessonsId: { userId, lessonsId: lessonId } },
+        data: {
+          courseId,
+          vocabularyCorrect: { increment: data.vocabularyCorrect || 0 },
+          vocabularyWrong: { increment: data.vocabularyWrong || 0 },
+          quizCorrect: { increment: data.quizCorrect || 0 },
+          quizWrong: { increment: data.quizWrong || 0 },
+          score: data.score ?? existing.score,
+          watchedAt: new Date(),
+        },
+      });
+    }
 
-    return this.prisma.activity.upsert({
-      where: { userId_date: { userId, date: today } },
-      update: { watchedLesson: true },
-      create: {
+    return this.prisma.lessonActivity.create({
+      data: {
         userId,
-        date: today,
-        watchedLesson: true,
+        lessonsId: lessonId,
+        courseId,
+        vocabularyCorrect: data.vocabularyCorrect || 0,
+        vocabularyWrong: data.vocabularyWrong || 0,
+        quizCorrect: data.quizCorrect || 0,
+        quizWrong: data.quizWrong || 0,
+        score: data.score,
+        watchedAt: new Date(),
       },
     });
   }
 
-  async addVocabularyProgress(userId: string, count: number) {
-    const today = this.getToday();
+  async getLessonActivity(userId: string, lessonId: string) {
+    return this.prisma.lessonActivity.findUnique({
+      where: { userId_lessonsId: { userId, lessonsId: lessonId } },
+      include: { lesson: true, course: true },
+    });
+  }
 
-    return this.prisma.activity.upsert({
-      where: { userId_date: { userId, date: today } },
-      update: {
-        vocabularyLearned: { increment: count },
-      },
-      create: {
-        userId,
-        date: today,
-        vocabularyLearned: count,
+  async getAllActivityByUser(userId: string) {
+    return this.prisma.lessonActivity.findMany({
+      where: { userId },
+      include: {
+        lesson: true,
+        course: true,
       },
     });
   }
 
-  async recordTestScore(userId: string, score: number) {
-    const today = this.getToday();
-
-    return this.prisma.activity.upsert({
-      where: { userId_date: { userId, date: today } },
-      update: { testScore: score },
-      create: {
-        userId,
-        date: today,
-        testScore: score,
-      },
-    });
-  }
-
-  async recordVocabularyTestScore(userId: string, score: number) {
-    const today = this.getToday();
-
-    return this.prisma.activity.upsert({
-      where: { userId_date: { userId, date: today } },
-      update: { vocabTestScore: score },
-      create: {
-        userId,
-        date: today,
-        vocabTestScore: score,
-      },
-    });
-  }
-
-  async getTodayActivity(userId: string) {
-    const today = this.getToday();
-
-    const activity = await this.prisma.activity.findUnique({
-      where: { userId_date: { userId, date: today } },
+  async getProgressByCourse(userId: string, courseId: string) {
+    const lessons = await this.prisma.lessons.findMany({
+      where: { coursesCategoryId: courseId },
     });
 
-    return (
-      activity || {
-        watchedLesson: false,
-        vocabularyLearned: 0,
-        testScore: 0,
-        vocabTestScore: 0,
-      }
-    );
+    const activities = await this.prisma.lessonActivity.findMany({
+      where: { userId, courseId },
+    });
+
+    const completed = activities.length;
+    const total = lessons.length;
+
+    return {
+      totalLessons: total,
+      completedLessons: completed,
+      progress: total > 0 ? Math.round((completed / total) * 100) : 0,
+    };
   }
 }
+

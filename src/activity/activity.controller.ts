@@ -1,41 +1,46 @@
 import {
   Body,
   Controller,
-  Post,
-  UseGuards,
-  Req,
   Get,
+  Post,
+  Query,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
-import { ActivityService } from './activity.service';
+import { LessonActivityService } from './activity.service';
 
-@Controller('activity')
+@Controller('lesson-activity')
 @UseGuards(JwtAuthGuard)
-export class ActivityController {
-  constructor(private readonly activityService: ActivityService) {}
+export class LessonActivityController {
+  constructor(private readonly service: LessonActivityService) {}
 
-  @Post('mark-viewed')
-  markLessonViewed(@Req() req) {
-    return this.activityService.markLessonViewed(req.user.id);
+  @Post('mark')
+  markLesson(@Req() req, @Body() body: {
+    lessonId: string;
+    courseId: string;
+    vocabularyCorrect?: number;
+    vocabularyWrong?: number;
+    quizCorrect?: number;
+    quizWrong?: number;
+    score?: number;
+  }) {
+    return this.service.markLesson(req.user.id, body.lessonId, body.courseId, body);
   }
 
-  @Post('add-vocab-progress')
-  addVocabularyProgress(@Req() req, @Body() body: { count: number }) {
-    return this.activityService.addVocabularyProgress(req.user.id, body.count);
+  @Get('all')
+  getAll(@Req() req) {
+    return this.service.getAllActivityByUser(req.user.id);
   }
 
-  @Post('add-test-score')
-  addTestScore(@Req() req, @Body() body: { score: number }) {
-    return this.activityService.recordTestScore(req.user.id, body.score);
+  @Get('one')
+  getOne(@Req() req, @Query('lessonId') lessonId: string) {
+    return this.service.getLessonActivity(req.user.id, lessonId);
   }
 
-  @Post('add-vocab-test-score')
-  addVocabTestScore(@Req() req, @Body() body: { score: number }) {
-    return this.activityService.recordVocabularyTestScore(req.user.id, body.score);
-  }
-
-  @Get('today')
-  getTodayActivity(@Req() req) {
-    return this.activityService.getTodayActivity(req.user.id);
+  @Get('progress')
+  getProgress(@Req() req, @Query('courseId') courseId: string) {
+    return this.service.getProgressByCourse(req.user.id, courseId);
   }
 }
+
