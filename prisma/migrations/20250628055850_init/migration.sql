@@ -24,6 +24,7 @@ CREATE TABLE "Activity" (
     "userId" TEXT NOT NULL,
     "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "watchedLesson" BOOLEAN NOT NULL DEFAULT false,
+    "vocabularyLearned" INTEGER NOT NULL DEFAULT 0,
     "testScore" INTEGER NOT NULL DEFAULT 0,
     "vocabTestScore" INTEGER NOT NULL DEFAULT 0,
 

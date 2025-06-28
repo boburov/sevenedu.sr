@@ -38,6 +38,7 @@ model Activity {
   date      DateTime @default(now())
 
   watchedLesson  Boolean  @default(false)
+  vocabularyLearned Int   @default(0)
   testScore        Int    @default(0)
   vocabTestScore   Int    @default(0)
 
