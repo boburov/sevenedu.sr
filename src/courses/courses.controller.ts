@@ -91,8 +91,8 @@ export class CoursesController {
     @Body() dto: CreateCategoryCourseDto,
     @UploadedFile() file: Express.Multer.File
   ) {
-    if (!file.mimetype.startsWith('video/')) {
-      throw new BadRequestException('Faqat video fayl yuklash mumkin');
+    if (!file.mimetype.startsWith('image/')) {
+      throw new BadRequestException('Faqat rasm fayl yuklash mumkin');
     }
 
     return this.courseService.createCategory(dto, file);

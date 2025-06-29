@@ -4,7 +4,7 @@ import { format, subDays, eachDayOfInterval } from 'date-fns';
 
 @Injectable()
 export class ActivityService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async markLesson(
     userId: string,
@@ -18,14 +18,23 @@ export class ActivityService {
       score?: number;
     },
   ) {
-    const existing = await this.prisma.lessonActivity.findUnique({
+    const existing = await this.prisma.lessonActivity.upsert({
       where: {
         userId_lessonsId: {
           userId,
           lessonsId: lessonId,
         },
       },
+      update: {
+        watchedAt: new Date(),
+      },
+      create: {
+        userId,
+        lessonsId: lessonId,
+        watchedAt: new Date(),
+      },
     });
+
 
     if (existing) {
       return this.prisma.lessonActivity.update({

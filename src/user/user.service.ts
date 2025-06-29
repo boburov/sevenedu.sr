@@ -202,7 +202,7 @@ export class UserService {
           count: 1,
         },
       });
-    } else if (usage.count >= 10) {
+    } else if (usage.count >= 5) {
       throw new ForbiddenException('Siz bugungi 10 ta kreditdan foydalandingiz.');
     } else {
       await this.prisma.lessonAIUsage.update({
@@ -456,6 +456,7 @@ export class UserService {
       where: { id: userId },
       select: { coins: true },
     });
+    console.log("💰 Tanga so‘rovi:", userId, coins);
 
     if (!user) {
       throw new NotFoundException('Foydalanuvchi topilmadi');

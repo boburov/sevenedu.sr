@@ -90,7 +90,6 @@ model LessonActivity {
   lessonsId String
   courseId  String?
   watchedAt DateTime @default(now())
-  score     Int?
 
   vocabularyCorrect Int @default(0)
   vocabularyWrong   Int @default(0)
