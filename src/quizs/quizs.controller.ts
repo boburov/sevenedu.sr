@@ -7,6 +7,8 @@ import { UpdateQuizDto } from './dto/update-quiz.dto';
 export class QuizsController {
   constructor(private readonly quizsService: QuizsService) { }
 
+  
+
   @Post(":id/create")
   create(
     @Param("id") id: string,
