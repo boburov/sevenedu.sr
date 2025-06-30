@@ -94,6 +94,7 @@ model LessonActivity {
   vocabularyCorrect Int @default(0)
   vocabularyWrong   Int @default(0)
 
+  score Int @default(0)
   quizCorrect Int @default(0)
   quizWrong   Int @default(0)
 
