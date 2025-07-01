@@ -137,9 +137,7 @@ export class UserController {
 
 
   @Post('assign-course')
-  async assignCourseToUser(
-    @Body() body: { email: string; courseId: string }
-  ) {
+  async assignCourseToUser(@Body() body: { email: string; courseId: string }) {
     return this.userService.assignCourse(body.email, body.courseId);
   }
 
