@@ -71,7 +71,9 @@ export class UserService {
           include: {
             lesson: true
           }
+          
         },
+        courses: true,
         notifications: {
           include: {
             notification: true,
