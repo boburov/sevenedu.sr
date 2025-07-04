@@ -10,17 +10,16 @@ async function bootstrap() {
   app.use(bodyParser.json({ limit: '50mb' }));
   app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
-  // CORS muammosini hal qilish
   app.enableCors({
     origin: [
       'http://localhost:3000',
       'https://sevenedu.uz',
-      'https://7-edu-admin-ehvf.vercel.app',
+      'https://7-edu-admin.vercel.app',
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization'],
   });
+
 
   // DTO uchun
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
