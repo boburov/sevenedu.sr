@@ -6,16 +6,11 @@ import * as bodyParser from 'body-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-    app.use(bodyParser.json({ limit: '50mb' }));
+  // Katta JSON va form-data fayllar uchun limitlar
+  app.use(bodyParser.json({ limit: '50mb' }));
   app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-    }),
-  );
-
+  // CORS muammosini hal qilish
   app.enableCors({
     origin: [
       'http://localhost:3000',
@@ -24,8 +19,12 @@ async function bootstrap() {
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
+
+  // DTO uchun
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
   await app.listen(process.env.PORT ?? 3000);
 }
-bootstrap().catch(console.error);
+bootstrap();
