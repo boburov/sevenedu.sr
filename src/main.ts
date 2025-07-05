@@ -11,11 +11,7 @@ async function bootstrap() {
   app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
   app.enableCors({
-    origin: [
-      'http://localhost:3000',
-      'https://sevenedu.uz',
-      'https://7-edu-admin.vercel.app',
-    ],
+    origin: "*",
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
   });
