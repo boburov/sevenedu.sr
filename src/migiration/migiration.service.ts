@@ -90,7 +90,6 @@ export class MigrationService {
         Bucket: TargetBucket,
         CopySource: copySource,
         Key: NewKey,
-        ACL: 'public-read',
       }),
     );
   }
