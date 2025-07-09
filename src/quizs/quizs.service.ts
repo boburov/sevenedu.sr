@@ -8,7 +8,7 @@ export class QuizsService {
   constructor(private prisma: PrismaService) { }
 
   async create(createQuizDto: CreateQuizDto, lessonId: string) {
-    const { quession, option1, option2, option3, current } = createQuizDto;
+    const { quession, option1, option2, option3,  } = createQuizDto;
 
     const lesson = await this.prisma.lessons.findFirst({ where: { id: lessonId } });
 

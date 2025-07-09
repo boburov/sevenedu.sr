@@ -14,6 +14,9 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationsModule } from './notifications/notifications.module';
 import { DictonaryModule } from './dictonary/dictonary.module';
 import { ActivityModule } from './activity/activity.module';
+import { MigrationModule } from './migiration/migiration.module';
+import { MigrationController } from './migiration/migiration.controller';
+import { MigrationService } from './migiration/migiration.service';
 
 @Module({
   imports: [
@@ -29,8 +32,9 @@ import { ActivityModule } from './activity/activity.module';
     DictonaryModule,
     NotificationsModule,
     ActivityModule,
+    MigrationModule,
   ],
-  controllers: [AppController],
-  providers: [AppService, MailService],
+  controllers: [AppController, MigrationController],
+  providers: [AppService, MailService, MigrationService],
 })
 export class AppModule { }
