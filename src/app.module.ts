@@ -14,9 +14,6 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationsModule } from './notifications/notifications.module';
 import { DictonaryModule } from './dictonary/dictonary.module';
 import { ActivityModule } from './activity/activity.module';
-import { MigrationModule } from './migiration/migiration.module';
-import { MigrationController } from './migiration/migiration.controller';
-import { MigrationService } from './migiration/migiration.service';
 import confuguration from './config/confuguration';
 
 @Module({
@@ -33,9 +30,8 @@ import confuguration from './config/confuguration';
     DictonaryModule,
     NotificationsModule,
     ActivityModule,
-    MigrationModule,
   ],
-  controllers: [AppController, MigrationController],
-  providers: [AppService, MailService, MigrationService],
+  controllers: [AppController,],
+  providers: [AppService, MailService],
 })
 export class AppModule { }
