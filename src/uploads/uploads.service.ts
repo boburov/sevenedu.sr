@@ -6,15 +6,22 @@ import * as path from 'path';
 @Injectable()
 export class UploadsService {
   private s3: S3Client;
+  private bucket: string;
+  private region: string;
 
   constructor(private configService: ConfigService) {
+    const aws = this.configService.get('aws');
+
     this.s3 = new S3Client({
-      region: this.configService.getOrThrow('AWS_REGION'),
+      region: aws.region,
       credentials: {
-        accessKeyId: this.configService.getOrThrow('AWS_ACCESS_KEY_ID'),
-        secretAccessKey: this.configService.getOrThrow('AWS_SECRET_ACCESS_KEY'),
+        accessKeyId: aws.accessKeyId,
+        secretAccessKey: aws.secretAccessKey,
       },
     });
+
+    this.bucket = aws.bucket;
+    this.region = aws.region;
   }
 
   async uploadFile(file: Express.Multer.File, folder: 'images' | 'videos') {
@@ -24,11 +31,9 @@ export class UploadsService {
 
     const ext = path.extname(file.originalname);
     const filename = `${folder}/${Date.now()}${ext}`;
-    const bucket = this.configService.getOrThrow('AWS_BUCKET_NAME');
-    const region = this.configService.getOrThrow('AWS_REGION');
 
     const command = new PutObjectCommand({
-      Bucket: bucket,
+      Bucket: this.bucket,
       Key: filename,
       Body: file.buffer,
       ContentType: file.mimetype,
@@ -37,15 +42,13 @@ export class UploadsService {
 
     await this.s3.send(command);
 
-    return `https://${bucket}.s3.${region}.amazonaws.com/${filename}`;
+    return `https://${this.bucket}.s3.${this.region}.amazonaws.com/${filename}`;
   }
 
   async deleteFile(key: string): Promise<boolean> {
     try {
-      const bucket = this.configService.getOrThrow('AWS_BUCKET_NAME');
-
       const deleteCommand = new DeleteObjectCommand({
-        Bucket: bucket,
+        Bucket: this.bucket,
         Key: key,
       });
 
@@ -56,5 +59,4 @@ export class UploadsService {
       return false;
     }
   }
-
 }

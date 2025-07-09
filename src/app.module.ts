@@ -17,10 +17,11 @@ import { ActivityModule } from './activity/activity.module';
 import { MigrationModule } from './migiration/migiration.module';
 import { MigrationController } from './migiration/migiration.controller';
 import { MigrationService } from './migiration/migiration.service';
+import confuguration from './config/confuguration';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true ,load: [confuguration]}),
     ScheduleModule.forRoot(),
     PrismaModule,
     UserModule,

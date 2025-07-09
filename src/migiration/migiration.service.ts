@@ -4,19 +4,19 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import {
   S3Client,
   CopyObjectCommand,
-  DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 
 @Injectable()
 export class MigrationService {
-  private sourceS3: S3Client;
-  private targetS3: S3Client;
+  private readonly sourceS3: S3Client;
+  private readonly targetS3: S3Client;
   private readonly logger = new Logger(MigrationService.name);
 
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
   ) {
+    // eski bucket S3Client
     this.sourceS3 = new S3Client({
       region: config.getOrThrow('AWS_REGION'),
       credentials: {
@@ -25,6 +25,7 @@ export class MigrationService {
       },
     });
 
+    // yangi bucket S3Client
     this.targetS3 = new S3Client({
       region: config.getOrThrow('AWS_REGION'),
       credentials: {
@@ -44,6 +45,7 @@ export class MigrationService {
 
     for (const category of categories) {
       if (!category.thumbnail) continue;
+
       const oldKey = new URL(category.thumbnail).pathname.slice(1);
       const newKey = `images/${Date.now()}-${oldKey.split('/').pop()}`;
 
@@ -56,11 +58,12 @@ export class MigrationService {
         data: { thumbnail: newUrl },
       });
 
-      this.logger.log(`Thumbnail updated for category ${category.id}`);
+      this.logger.log(`✅ Thumbnail updated: ${category.id}`);
     }
 
     for (const lesson of lessons) {
       if (!lesson.videoUrl) continue;
+
       const oldKey = new URL(lesson.videoUrl).pathname.slice(1);
       const newKey = `videos/${Date.now()}-${oldKey.split('/').pop()}`;
 
@@ -73,18 +76,22 @@ export class MigrationService {
         data: { videoUrl: newUrl },
       });
 
-      this.logger.log(`Video updated for lesson ${lesson.id}`);
+      this.logger.log(`✅ Video updated: ${lesson.id}`);
     }
 
     return { message: 'All files migrated and URLs updated' };
   }
 
-  private async copyFile(SourceBucket: string, Bucket: string, CopySourceKey: string, Key: string) {
-    await this.targetS3.send(new CopyObjectCommand({
-      Bucket,
-      CopySource: `/${SourceBucket}/${CopySourceKey}`,
-      Key,
-      ACL: 'public-read',
-    }));
+  private async copyFile(SourceBucket: string, TargetBucket: string, CopySourceKey: string, NewKey: string) {
+    const copySource = `${SourceBucket}/${CopySourceKey}`;
+
+    await this.targetS3.send(
+      new CopyObjectCommand({
+        Bucket: TargetBucket,
+        CopySource: copySource,
+        Key: NewKey,
+        ACL: 'public-read',
+      }),
+    );
   }
 }
