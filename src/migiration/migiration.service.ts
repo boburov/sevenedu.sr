@@ -1,66 +1,83 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import {
+  S3Client,
+  ListObjectsV2Command,
+  GetObjectCommand,
+  PutObjectCommand,
+} from '@aws-sdk/client-s3';
+import { Injectable, Logger } from '@nestjs/common';
+import { Readable } from 'stream';
 
 @Injectable()
 export class MigirationService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(MigirationService.name);
 
-  private processUrl(url: string, folder: 'images' | 'videos'): string {
-    if (!url || !url.includes(`/${folder}/`)) return url;
+  private readonly oldS3 = new S3Client({
+  region: 'eu-north-1',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID as string,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY as string,
+  },
+});
 
-    const regex = new RegExp(`/${folder}/(\\d+-)?(\\d+\\.(png|jpg|jpeg|mp4))$`);
-    const match = url.match(regex);
-    if (match) {
-      return `https://sevenedu-bucket.s3.eu-north-1.amazonaws.com/${folder}/${match[2]}`;
+  private readonly newS3 = new S3Client({
+  region: 'eu-north-1',
+  credentials: {
+    accessKeyId: process.env.NEW_AWS_ACCESS_KEY_ID as string,
+    secretAccessKey: process.env.NEW_AWS_SECRET_ACCESS_KEY as string,
+  },
+});
+
+  private readonly oldBucket = process.env.AWS_BUCKET_NAME;
+  private readonly newBucket = process.env.NEW_AWS_BUCKET_NAME;
+
+  async migrateAllFiles(): Promise<void> {
+    this.logger.log('🚀 Fayllarni olishni boshladim...');
+
+    const listCommand = new ListObjectsV2Command({
+      Bucket: this.oldBucket,
+    });
+
+    const listResponse = await this.oldS3.send(listCommand);
+
+    const contents = listResponse.Contents || [];
+
+    if (contents.length === 0) {
+      this.logger.warn('❗ Hech qanday fayl topilmadi.');
+      return;
     }
 
-    return url;
-  }
+    for (const file of contents) {
+      const key = file.Key;
+      this.logger.log(`▶️ Fayl ko‘chirilmoqda: ${key}`);
 
-  async fixAllUrls() {
-    const lessons = await this.prisma.lessons.findMany({
-      select: {
-        id: true,
-        videoUrl: true,
-      },
-    });
+      try {
+        const getCommand = new GetObjectCommand({
+          Bucket: this.oldBucket,
+          Key: key,
+        });
 
-    const updatedLessons = lessons.filter((lesson) => {
-      const fixed = this.processUrl(lesson.videoUrl, 'videos');
-      return fixed !== lesson.videoUrl;
-    });
+        const response = await this.oldS3.send(getCommand);
+        const stream = response.Body as Readable;
 
-    for (const lesson of updatedLessons) {
-      const fixed = this.processUrl(lesson.videoUrl, 'videos');
-      await this.prisma.lessons.update({
-        where: { id: lesson.id },
-        data: { videoUrl: fixed },
-      });
+        const chunks: Buffer[] = [];
+        for await (const chunk of stream) {
+          chunks.push(chunk instanceof Buffer ? chunk : Buffer.from(chunk));
+        }
+
+        const putCommand = new PutObjectCommand({
+          Bucket: this.newBucket,
+          Key: key,
+          Body: Buffer.concat(chunks),
+          ContentType: response.ContentType,
+        });
+
+        await this.newS3.send(putCommand);
+        this.logger.log(`✅ Fayl ko‘chirildi: ${key}`);
+      } catch (error) {
+        this.logger.error(`❌ Xato: ${key}`, error);
+      }
     }
 
-    const categories = await this.prisma.coursesCategory.findMany({
-      select: {
-        id: true,
-        thumbnail: true,
-      },
-    });
-
-    const updatedCategories = categories.filter((cat) => {
-      const fixed = this.processUrl(cat.thumbnail, 'images');
-      return fixed !== cat.thumbnail;
-    });
-
-    for (const category of updatedCategories) {
-      const fixed = this.processUrl(category.thumbnail, 'images');
-      await this.prisma.coursesCategory.update({
-        where: { id: category.id },
-        data: { thumbnail: fixed },
-      });
-    }
-
-    return {
-      updatedLessons: updatedLessons.length,
-      updatedCategories: updatedCategories.length,
-    };
+    this.logger.log('🎉 Barcha fayllar muvaffaqiyatli ko‘chirildi.');
   }
 }
