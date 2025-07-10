@@ -1,12 +1,12 @@
 import { Controller, Post } from '@nestjs/common';
-import { MigrationService } from './migiration.service';
+import { MigirationService } from './migiration.service';
 
-@Controller('migration')
-export class MigrationController {
-  constructor(private readonly migrationService: MigrationService) {}
+@Controller('migiration')
+export class MigirationController {
+  constructor(private readonly service: MigirationService) {}
 
-  @Post('move-files')
-  async moveFiles() {
-    return this.migrationService.migrateFiles();
+  @Post('/fix-urls')
+  fixAllUrls() {
+    return this.service.fixAllUrls();
   }
 }

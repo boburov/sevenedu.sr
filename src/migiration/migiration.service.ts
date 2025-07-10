@@ -1,96 +1,66 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import {
-  S3Client,
-  CopyObjectCommand,
-} from '@aws-sdk/client-s3';
 
 @Injectable()
-export class MigrationService {
-  private readonly sourceS3: S3Client;
-  private readonly targetS3: S3Client;
-  private readonly logger = new Logger(MigrationService.name);
+export class MigirationService {
+  constructor(private readonly prisma: PrismaService) {}
 
-  constructor(
-    private readonly config: ConfigService,
-    private readonly prisma: PrismaService,
-  ) {
-    // eski bucket S3Client
-    this.sourceS3 = new S3Client({
-      region: config.getOrThrow('AWS_REGION'),
-      credentials: {
-        accessKeyId: config.getOrThrow('AWS_ACCESS_KEY_ID'),
-        secretAccessKey: config.getOrThrow('AWS_SECRET_ACCESS_KEY'),
-      },
-    });
+  private processUrl(url: string, folder: 'images' | 'videos'): string {
+    if (!url || !url.includes(`/${folder}/`)) return url;
 
-    // yangi bucket S3Client
-    this.targetS3 = new S3Client({
-      region: config.getOrThrow('AWS_REGION'),
-      credentials: {
-        accessKeyId: config.getOrThrow('NEW_AWS_ACCESS_KEY_ID'),
-        secretAccessKey: config.getOrThrow('NEW_AWS_SECRET_ACCESS_KEY'),
-      },
-    });
-  }
-
-  async migrateFiles() {
-    const oldBucket = this.config.getOrThrow('AWS_BUCKET_NAME');
-    const newBucket = this.config.getOrThrow('NEW_AWS_BUCKET_NAME');
-    const region = this.config.getOrThrow('AWS_REGION');
-
-    const categories = await this.prisma.coursesCategory.findMany();
-    const lessons = await this.prisma.lessons.findMany();
-
-    for (const category of categories) {
-      if (!category.thumbnail) continue;
-
-      const oldKey = new URL(category.thumbnail).pathname.slice(1);
-      const newKey = `images/${Date.now()}-${oldKey.split('/').pop()}`;
-
-      await this.copyFile(oldBucket, newBucket, oldKey, newKey);
-
-      const newUrl = `https://${newBucket}.s3.${region}.amazonaws.com/${newKey}`;
-
-      await this.prisma.coursesCategory.update({
-        where: { id: category.id },
-        data: { thumbnail: newUrl },
-      });
-
-      this.logger.log(`✅ Thumbnail updated: ${category.id}`);
+    const regex = new RegExp(`/${folder}/(\\d+-)?(\\d+\\.(png|jpg|jpeg|mp4))$`);
+    const match = url.match(regex);
+    if (match) {
+      return `https://sevenedu-bucket.s3.eu-north-1.amazonaws.com/${folder}/${match[2]}`;
     }
 
-    for (const lesson of lessons) {
-      if (!lesson.videoUrl) continue;
+    return url;
+  }
 
-      const oldKey = new URL(lesson.videoUrl).pathname.slice(1);
-      const newKey = `videos/${Date.now()}-${oldKey.split('/').pop()}`;
+  async fixAllUrls() {
+    const lessons = await this.prisma.lessons.findMany({
+      select: {
+        id: true,
+        videoUrl: true,
+      },
+    });
 
-      await this.copyFile(oldBucket, newBucket, oldKey, newKey);
+    const updatedLessons = lessons.filter((lesson) => {
+      const fixed = this.processUrl(lesson.videoUrl, 'videos');
+      return fixed !== lesson.videoUrl;
+    });
 
-      const newUrl = `https://${newBucket}.s3.${region}.amazonaws.com/${newKey}`;
-
+    for (const lesson of updatedLessons) {
+      const fixed = this.processUrl(lesson.videoUrl, 'videos');
       await this.prisma.lessons.update({
         where: { id: lesson.id },
-        data: { videoUrl: newUrl },
+        data: { videoUrl: fixed },
       });
-
-      this.logger.log(`✅ Video updated: ${lesson.id}`);
     }
 
-    return { message: 'All files migrated and URLs updated' };
-  }
+    const categories = await this.prisma.coursesCategory.findMany({
+      select: {
+        id: true,
+        thumbnail: true,
+      },
+    });
 
-  private async copyFile(SourceBucket: string, TargetBucket: string, CopySourceKey: string, NewKey: string) {
-    const copySource = `${SourceBucket}/${CopySourceKey}`;
+    const updatedCategories = categories.filter((cat) => {
+      const fixed = this.processUrl(cat.thumbnail, 'images');
+      return fixed !== cat.thumbnail;
+    });
 
-    await this.targetS3.send(
-      new CopyObjectCommand({
-        Bucket: TargetBucket,
-        CopySource: copySource,
-        Key: NewKey,
-      }),
-    );
+    for (const category of updatedCategories) {
+      const fixed = this.processUrl(category.thumbnail, 'images');
+      await this.prisma.coursesCategory.update({
+        where: { id: category.id },
+        data: { thumbnail: fixed },
+      });
+    }
+
+    return {
+      updatedLessons: updatedLessons.length,
+      updatedCategories: updatedCategories.length,
+    };
   }
 }

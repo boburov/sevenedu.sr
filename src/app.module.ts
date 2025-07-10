@@ -16,8 +16,8 @@ import { DictonaryModule } from './dictonary/dictonary.module';
 import { ActivityModule } from './activity/activity.module';
 import confuguration from './config/confuguration';
 import { MigrationModule } from './migiration/migiration.module';
-import { MigrationController } from './migiration/migiration.controller';
-import { MigrationService } from './migiration/migiration.service';
+import { MigirationController } from './migiration/migiration.controller';
+import { MigirationService } from './migiration/migiration.service';
 
 @Module({
   imports: [
@@ -35,7 +35,7 @@ import { MigrationService } from './migiration/migiration.service';
     ActivityModule,
     MigrationModule
   ],
-  controllers: [AppController,MigrationController],
-  providers: [AppService, MailService,MigrationService],
+  controllers: [AppController,MigirationController],
+  providers: [AppService, MailService,MigirationService],
 })
 export class AppModule { }
