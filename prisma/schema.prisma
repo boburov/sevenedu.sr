@@ -71,17 +71,17 @@ model UserCourse {
 }
 
 model Lessons {
-  id                String          @id @default(uuid())
+  id                String           @id @default(uuid())
   title             String
-  isDemo            Boolean         @default(false)
+  isDemo            Boolean          @default(false)
   videoUrl          String
   coursesCategoryId String
-  coursesCategory   CoursesCategory @relation("CategoryLessons", fields: [coursesCategoryId], references: [id])
-
-  dictonary      Dictonary[]      @relation("Dictonary")
-  quizs          Quizs[]          @relation("Quizs")
-  questions      Quessions[]      @relation("Quessions")
-  lessonActivity LessonActivity[]
+  coursesCategory   CoursesCategory  @relation("CategoryLessons", fields: [coursesCategoryId], references: [id])
+  order             Int
+  dictonary         Dictonary[]      @relation("Dictonary")
+  quizs             Quizs[]          @relation("Quizs")
+  questions         Quessions[]      @relation("Quessions")
+  lessonActivity    LessonActivity[]
 }
 
 model LessonActivity {
@@ -94,7 +94,7 @@ model LessonActivity {
   vocabularyCorrect Int @default(0)
   vocabularyWrong   Int @default(0)
 
-  score Int @default(0)
+  score       Int @default(0)
   quizCorrect Int @default(0)
   quizWrong   Int @default(0)
 
@@ -104,7 +104,6 @@ model LessonActivity {
 
   @@unique([userId, lessonsId])
 }
-
 
 model Quizs {
   id            String @id @default(uuid())

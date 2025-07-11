@@ -34,6 +34,16 @@ export class CoursesController {
     return this.courseService.getAll()
   }
 
+  @Patch('category/:categoryId/lessons/reorder')
+  @UseGuards(JwtAuthGuard)
+  async reorderLessons(
+    @Param('categoryId') categoryId: string,
+    @Body() body: { lessonId: string, newOrder: number }
+  ) {
+    return this.courseService.reorderLesson(categoryId, body.lessonId, body.newOrder);
+  }
+
+
   @Get(':lessonId/vocabulary-quiz')
   async getVocabularyQuiz(@Param('lessonId') lessonId: string) {
     return this.courseService.generateVocabularyQuiz(lessonId);

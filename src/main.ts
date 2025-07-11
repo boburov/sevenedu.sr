@@ -10,8 +10,8 @@ async function bootstrap() {
   app.use(bodyParser.urlencoded({ limit: '4000mb', extended: true }));
 
   app.enableCors({
-    origin: '*', 
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   });
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));

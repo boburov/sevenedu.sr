@@ -113,6 +113,47 @@ export class CoursesService {
     return newCategory;
   }
 
+  async reorderLesson(categoryId: string, lessonId: string, newOrder: number) {
+    const targetLesson = await this.prisma.lessons.findUnique({ where: { id: lessonId } });
+    if (!targetLesson || targetLesson.coursesCategoryId !== categoryId) {
+      throw new NotFoundException("Dars topilmadi yoki noto‘g‘ri kategoriya");
+    }
+
+    const oldOrder = targetLesson.order;
+
+    if (oldOrder === newOrder) {
+      return { message: "Joylashuv o‘zgarmadi" };
+    }
+
+    const direction = oldOrder < newOrder ? 'down' : 'up';
+
+    if (direction === 'down') {
+      await this.prisma.lessons.updateMany({
+        where: {
+          coursesCategoryId: categoryId,
+          order: { gt: oldOrder, lte: newOrder },
+        },
+        data: { order: { decrement: 1 } }
+      });
+    } else {
+      await this.prisma.lessons.updateMany({
+        where: {
+          coursesCategoryId: categoryId,
+          order: { gte: newOrder, lt: oldOrder },
+        },
+        data: { order: { increment: 1 } }
+      });
+    }
+
+    await this.prisma.lessons.update({
+      where: { id: lessonId },
+      data: { order: newOrder }
+    });
+
+    return { message: "Dars muvaffaqiyatli ko‘chirildi" };
+  }
+
+
   async createCourse(createCourse: CreateLessonDto, id: string, file: Express.Multer.File) {
     const { title, isDemo, } = createCourse;
 
@@ -120,15 +161,17 @@ export class CoursesService {
     if (!category) throw new HttpException(`Category Not Found`, 404);
 
     const videoFileUrl = await this.uploadsService.uploadFile(file, 'videos');
+    const count = await this.prisma.lessons.count({ where: { coursesCategoryId: id } });
 
     const newCourse = await this.prisma.lessons.create({
       data: {
         title,
         isDemo,
         videoUrl: videoFileUrl,
-        coursesCategoryId: id
+        coursesCategoryId: id,
+        order: count + 1,
       }
-    });
+    }); 
 
     return newCourse;
   }
