@@ -153,6 +153,54 @@ export class CoursesService {
     return { message: "Dars muvaffaqiyatli ko‘chirildi" };
   }
 
+ async fixAllVideoUrls() {
+  const lessons = await this.prisma.lessons.findMany({
+    where: {
+      videoUrl: {
+        contains: '-',
+      },
+    },
+  });
+
+  const updatedLessons: {
+    lessonId: string;
+    oldUrl: string;
+    newUrl: string;
+  }[] = [];
+
+  for (const lesson of lessons) {
+    const oldUrl = lesson.videoUrl;
+
+    // Misol: 1752060391578-1751973178413.MOV
+    const filename = oldUrl.split('/').pop();
+    if (!filename) continue;
+
+    const parts = filename.split('-');
+    if (parts.length < 2) continue;
+
+    const correctFilename = parts[1]; // 1751973178413.MOV
+    const correctUrl = oldUrl.replace(filename, correctFilename);
+
+    await this.prisma.lessons.update({
+      where: { id: lesson.id },
+      data: {
+        videoUrl: correctUrl,
+      },
+    });
+
+    updatedLessons.push({
+      lessonId: lesson.id,
+      oldUrl,
+      newUrl: correctUrl,
+    });
+  }
+
+  return {
+    updatedCount: updatedLessons.length,
+    updatedLessons,
+  };
+}
+
 
   async createCourse(createCourse: CreateLessonDto, id: string, file: Express.Multer.File) {
     const { title, isDemo, } = createCourse;
@@ -171,7 +219,7 @@ export class CoursesService {
         coursesCategoryId: id,
         order: count + 1,
       }
-    }); 
+    });
 
     return newCourse;
   }

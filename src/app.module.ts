@@ -15,13 +15,10 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { DictonaryModule } from './dictonary/dictonary.module';
 import { ActivityModule } from './activity/activity.module';
 import confuguration from './config/confuguration';
-import { MigrationModule } from './migiration/migiration.module';
-import { MigirationController } from './migiration/migiration.controller';
-import { MigirationService } from './migiration/migiration.service';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true ,load: [confuguration]}),
+    ConfigModule.forRoot({ isGlobal: true, load: [confuguration] }),
     ScheduleModule.forRoot(),
     PrismaModule,
     UserModule,
@@ -33,9 +30,8 @@ import { MigirationService } from './migiration/migiration.service';
     DictonaryModule,
     NotificationsModule,
     ActivityModule,
-    MigrationModule
   ],
-  controllers: [AppController,MigirationController],
-  providers: [AppService, MailService,MigirationService],
+  controllers: [AppController],
+  providers: [AppService, MailService],
 })
 export class AppModule { }
