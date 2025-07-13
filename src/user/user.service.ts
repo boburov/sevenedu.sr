@@ -168,10 +168,6 @@ export class UserService {
     });
   }
 
-  async deleteUser() {
-    await this.prisma.user.deleteMany();
-    return { msg: 'Deleted' };
-  }
 
   async getLessonStats(userId: string) {
     const totalLessons = await this.prisma.lessons.count();

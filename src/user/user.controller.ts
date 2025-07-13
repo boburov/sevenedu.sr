@@ -160,9 +160,4 @@ export class UserController {
     return this.userService.deleteProfilePic(id);
   }
 
-  @Delete('all')
-  async deleteUser() {
-    return this.userService.deleteUser();
-  }
-
 }
