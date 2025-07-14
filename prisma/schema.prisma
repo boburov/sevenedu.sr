@@ -39,7 +39,7 @@ model VocabularyTestResult {
   correct Int
   total   Int
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])
 }
@@ -98,7 +98,7 @@ model LessonActivity {
   quizCorrect Int @default(0)
   quizWrong   Int @default(0)
 
-  user   User             @relation(fields: [userId], references: [id])
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   lesson Lessons          @relation(fields: [lessonsId], references: [id])
   course CoursesCategory? @relation(fields: [courseId], references: [id])
 
@@ -147,7 +147,7 @@ model NotificationRecipient {
   notificationId String
   isRead         Boolean @default(false)
 
-  user         User         @relation(fields: [userId], references: [id])
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
 
   @@unique([userId, notificationId])
@@ -159,7 +159,7 @@ model NotificationRead {
   notificationId String
   readAt         DateTime @default(now())
 
-  user         User         @relation(fields: [userId], references: [id])
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   notification Notification @relation(fields: [notificationId], references: [id])
 
   @@unique([userId, notificationId])
@@ -180,7 +180,7 @@ model LessonAIUsage {
   date     DateTime
   count    Int      @default(0)
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, lessonId, date])
 }
@@ -192,7 +192,7 @@ model Certificate {
   score    Int
   issuedAt DateTime @default(now())
 
-  user   User            @relation(fields: [userId], references: [id])
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   course CoursesCategory @relation(fields: [courseId], references: [id])
 
   @@unique([userId, courseId])

@@ -176,9 +176,4 @@ export class AuthService {
       },
     };
   }
-
-  async deleteAllUsers() {
-    await this.prisma.user.deleteMany();
-    return { msg: 'All users deleted' };
-  }
 }

@@ -65,10 +65,4 @@ export class AuthController {
   async forgotPassword(@Body() body: ForgotPasswordDto) {
     return await this.authService.forgotPassword(body.email);
   }
-
-
-  @Delete('all')
-  async deleteAll() {
-    return this.authService.deleteAllUsers();
-  }
 }
