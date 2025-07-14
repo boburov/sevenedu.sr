@@ -77,7 +77,7 @@ model Lessons {
   videoUrl          String
   coursesCategoryId String
   coursesCategory   CoursesCategory  @relation("CategoryLessons", fields: [coursesCategoryId], references: [id])
-  order             Int
+  order             Int              @default(0)
   dictonary         Dictonary[]      @relation("Dictonary")
   quizs             Quizs[]          @relation("Quizs")
   questions         Quessions[]      @relation("Quessions")
