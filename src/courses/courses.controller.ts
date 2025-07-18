@@ -39,7 +39,6 @@ export class CoursesController {
     return this.courseService.fixAllVideoUrls();
   }
 
-
   @Patch('category/:categoryId/lessons/reorder')
   @UseGuards(JwtAuthGuard)
   async reorderLessons(

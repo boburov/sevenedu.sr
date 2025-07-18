@@ -12,7 +12,7 @@ async function bootstrap() {
 
 
   app.enableCors({
-    origin: '*',
+    origin: ['http://localhost:3000', 'https://sevenedu.store'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   });
