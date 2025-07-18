@@ -39,6 +39,7 @@
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "connect-timeout": "^1.9.1",
     "date-fns": "^4.1.0",
     "get-stream": "^9.0.1",
     "multer": "^2.0.0",
