@@ -10,14 +10,18 @@ async function bootstrap() {
     'http://127.0.0.1:3000',
     'https://sevenedu.uz',
     'https://7-edu-admin-ehvf.vercel.app',
+    'capacitor://localhost',
+    'ionic://localhost',
   ];
 
   app.enableCors({
     origin: (origin, callback) => {
+      // Mobil brauzer yoki Telegram WebApp ba'zida origin yubormaydi
       if (!origin || allowedOrigins.includes(origin) || origin === 'null') {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        console.warn(`❌ Blocked by CORS: ${origin}`);
+        callback(new Error('❌ Not allowed by CORS'));
       }
     },
     credentials: true,
