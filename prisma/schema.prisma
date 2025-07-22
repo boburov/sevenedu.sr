@@ -82,6 +82,8 @@ model Lessons {
   quizs             Quizs[]          @relation("Quizs")
   questions         Quessions[]      @relation("Quessions")
   lessonActivity    LessonActivity[]
+
+  @@unique([coursesCategoryId, order])
 }
 
 model LessonActivity {

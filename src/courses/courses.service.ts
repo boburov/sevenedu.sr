@@ -114,7 +114,10 @@ export class CoursesService {
   }
 
   async reorderLesson(categoryId: string, lessonId: string, newOrder: number) {
-    const targetLesson = await this.prisma.lessons.findUnique({ where: { id: lessonId } });
+    const targetLesson = await this.prisma.lessons.findUnique({
+      where: { id: lessonId },
+    });
+
     if (!targetLesson || targetLesson.coursesCategoryId !== categoryId) {
       throw new NotFoundException("Dars topilmadi yoki noto‘g‘ri kategoriya");
     }
@@ -125,81 +128,94 @@ export class CoursesService {
       return { message: "Joylashuv o‘zgarmadi" };
     }
 
-    const direction = oldOrder < newOrder ? 'down' : 'up';
+    const isMovingDown = oldOrder < newOrder;
 
-    if (direction === 'down') {
+    if (isMovingDown) {
       await this.prisma.lessons.updateMany({
         where: {
           coursesCategoryId: categoryId,
-          order: { gt: oldOrder, lte: newOrder },
+          order: {
+            gt: oldOrder,
+            lte: newOrder,
+          },
         },
-        data: { order: { decrement: 1 } }
+        data: {
+          order: {
+            decrement: 1,
+          },
+        },
       });
     } else {
       await this.prisma.lessons.updateMany({
         where: {
           coursesCategoryId: categoryId,
-          order: { gte: newOrder, lt: oldOrder },
+          order: {
+            gte: newOrder,
+            lt: oldOrder,
+          },
         },
-        data: { order: { increment: 1 } }
+        data: {
+          order: {
+            increment: 1,
+          },
+        },
       });
     }
 
     await this.prisma.lessons.update({
       where: { id: lessonId },
-      data: { order: newOrder }
+      data: { order: newOrder },
     });
 
     return { message: "Dars muvaffaqiyatli ko‘chirildi" };
   }
 
- async fixAllVideoUrls() {
-  const lessons = await this.prisma.lessons.findMany({
-    where: {
-      videoUrl: {
-        contains: '-',
-      },
-    },
-  });
 
-  const updatedLessons: {
-    lessonId: string;
-    oldUrl: string;
-    newUrl: string;
-  }[] = [];
-
-  for (const lesson of lessons) {
-    const oldUrl = lesson.videoUrl;
-
-    // Misol: 1752060391578-1751973178413.MOV
-    const filename = oldUrl.split('/').pop();
-    if (!filename) continue;
-
-    const parts = filename.split('-');
-    if (parts.length < 2) continue;
-
-    const correctFilename = parts[1]; // 1751973178413.MOV
-    const correctUrl = oldUrl.replace(filename, correctFilename);
-
-    await this.prisma.lessons.update({
-      where: { id: lesson.id },
-      data: {
-        videoUrl: correctUrl,
+  async fixAllVideoUrls() {
+    const lessons = await this.prisma.lessons.findMany({
+      where: {
+        videoUrl: {
+          contains: '-',
+        },
       },
     });
 
-    updatedLessons.push({
-      lessonId: lesson.id,
-      oldUrl,
-      newUrl: correctUrl,
-    });
+    const updatedLessons: {
+      lessonId: string;
+      oldUrl: string;
+      newUrl: string;
+    }[] = [];
+
+    for (const lesson of lessons) {
+      const oldUrl = lesson.videoUrl;
+
+      const filename = oldUrl.split('/').pop();
+      if (!filename) continue;
+
+      const parts = filename.split('-');
+      if (parts.length < 2) continue;
+
+      const correctFilename = parts[1]; const correctUrl = oldUrl.replace(filename, correctFilename);
+
+      await this.prisma.lessons.update({
+        where: { id: lesson.id },
+        data: {
+          videoUrl: correctUrl,
+        },
+      });
+
+      updatedLessons.push({
+        lessonId: lesson.id,
+        oldUrl,
+        newUrl: correctUrl,
+      });
+    }
+
+    return {
+      updatedCount: updatedLessons.length,
+      updatedLessons,
+    };
   }
-
-  return {
-    updatedCount: updatedLessons.length,
-    updatedLessons,
-  };
-}
 
 
   async createCourse(createCourse: CreateLessonDto, id: string, file: Express.Multer.File) {

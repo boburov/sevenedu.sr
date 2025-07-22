@@ -56,4 +56,53 @@ export class CertificateService {
       },
     });
   }
+
+  async generateCertificateTest(userId: string, courseId: string) {
+    const lessons = await this.prisma.lessons.findMany({
+      where: { coursesCategoryId: courseId },
+      include: {
+        quizs: true,
+        dictonary: true,
+      },
+    });
+
+    let questions: any[] = [];
+
+    for (const lesson of lessons) {
+      for (const q of lesson.quizs) {
+        questions.push({
+          question: q.quiz,
+          options: [q.option1, q.option2, q.option3, q.currentOption].sort(() => Math.random() - 0.5),
+          correctOption: q.currentOption,
+          source: "quiz",
+          lessonId: lesson.id,
+        });
+      }
+
+      for (const d of lesson.dictonary) {
+        const wrongs = await this.prisma.dictonary.findMany({
+          where: { NOT: { id: d.id } },
+          take: 3,
+        });
+
+        const options = [
+          d.translated,
+          ...wrongs.map((w) => w.translated),
+        ].sort(() => Math.random() - 0.5);
+
+        questions.push({
+          question: `"${d.word}" so‘zining tarjimasini tanlang`,
+          options,
+          correctOption: d.translated,
+          source: "dictionary",
+          lessonId: lesson.id,
+        });
+      }
+    }
+
+    questions = questions.sort(() => Math.random() - 0.5);
+
+    return questions.slice(0, 150);
+  }
+
 }
