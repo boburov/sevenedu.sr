@@ -1,4 +1,4 @@
-import { HttpException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, HttpException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-auth.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
@@ -61,11 +61,19 @@ export class AuthService {
 
 
   async incrementUserCoinByEmail(email: string) {
+    console.log('💡 Email kelgan:', email); // ← bu yerda qiymatni ko‘ring
+
+    if (!email) {
+      console.error('❌ Email yo‘q');
+      throw new BadRequestException('Email required!');
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { email },
     });
 
     if (!user) {
+      console.error('❌ User topilmadi shu email bilan:', email);
       throw new NotFoundException('User topilmadi');
     }
 
@@ -78,6 +86,7 @@ export class AuthService {
 
     return { success: true, newCoin: user.coins + 1 };
   }
+
 
 
   async register(dto: CreateUserDto) {

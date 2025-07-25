@@ -113,63 +113,31 @@ export class CoursesService {
     return newCategory;
   }
 
-  async reorderLesson(categoryId: string, lessonId: string, newOrder: number) {
-    const targetLesson = await this.prisma.lessons.findUnique({
-      where: { id: lessonId },
+
+  async updateLessonOrdersByCategory() {
+    const categories = await this.prisma.lessons.findMany({
+      distinct: ['coursesCategoryId'],
+      select: {
+        coursesCategoryId: true,
+      },
     });
 
-    if (!targetLesson || targetLesson.coursesCategoryId !== categoryId) {
-      throw new NotFoundException("Dars topilmadi yoki noto‘g‘ri kategoriya");
-    }
-
-    const oldOrder = targetLesson.order;
-
-    if (oldOrder === newOrder) {
-      return { message: "Joylashuv o‘zgarmadi" };
-    }
-
-    const isMovingDown = oldOrder < newOrder;
-
-    if (isMovingDown) {
-      await this.prisma.lessons.updateMany({
-        where: {
-          coursesCategoryId: categoryId,
-          order: {
-            gt: oldOrder,
-            lte: newOrder,
-          },
-        },
-        data: {
-          order: {
-            decrement: 1,
-          },
-        },
+    for (const { coursesCategoryId } of categories) {
+      const lessons = await this.prisma.lessons.findMany({
+        where: { coursesCategoryId },
+        orderBy: { id: 'asc' }, 
       });
-    } else {
-      await this.prisma.lessons.updateMany({
-        where: {
-          coursesCategoryId: categoryId,
-          order: {
-            gte: newOrder,
-            lt: oldOrder,
-          },
-        },
-        data: {
-          order: {
-            increment: 1,
-          },
-        },
-      });
+
+      for (let i = 0; i < lessons.length; i++) {
+        await this.prisma.lessons.update({
+          where: { id: lessons[i].id },
+          data: { order: i },
+        });
+      }
     }
 
-    await this.prisma.lessons.update({
-      where: { id: lessonId },
-      data: { order: newOrder },
-    });
-
-    return { message: "Dars muvaffaqiyatli ko‘chirildi" };
+    return { message: 'Darslar muvaffaqiyatli tartiblandi.' };
   }
-
 
   async fixAllVideoUrls() {
     const lessons = await this.prisma.lessons.findMany({
