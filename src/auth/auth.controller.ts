@@ -43,6 +43,7 @@ export class AuthController {
             notification: true,
           },
         },
+        showedLesson: true,
         notificationsRead: true,
       },
     });
