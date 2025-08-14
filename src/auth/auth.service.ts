@@ -59,7 +59,6 @@ export class AuthService {
     return { msg: 'Yangi parol emailga yuborildi' };
   }
 
-
   async incrementUserCoinByEmail(email: string) {
     console.log('💡 Email kelgan:', email); // ← bu yerda qiymatni ko‘ring
 
@@ -86,8 +85,6 @@ export class AuthService {
 
     return { success: true, newCoin: user.coins + 1 };
   }
-
-
 
   async register(dto: CreateUserDto) {
     const { email, password, name, surname, phonenumber } = dto;
@@ -185,4 +182,7 @@ export class AuthService {
       },
     };
   }
+
+  
+
 }

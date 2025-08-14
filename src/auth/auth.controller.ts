@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Req, UseGuards, Post, HttpException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Req, UseGuards, Post, HttpException, UnauthorizedException } from '@nestjs/common';
 import { LoginUserDto } from './dto/login-user.dto';
 import { AuthService } from './auth.service';
 import { VerifyCodeDto } from './dto/verify-code';
@@ -7,12 +7,14 @@ import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { AuthGuard } from '@nestjs/passport';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ForgotPasswordDto } from './dto/forgot-psw.dto';
+import { JwtService } from '@nestjs/jwt';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private authService: AuthService,
-    private prisma: PrismaService
+    private prisma: PrismaService,
+    private jwt: JwtService
   ) { }
 
   @Post('register')
@@ -50,6 +52,18 @@ export class AuthController {
 
     return user
   }
+
+  @Post('refresh')
+  async refresh(@Body('refreshToken') refreshToken: string) {
+    try {
+      const payload = this.jwt.verify(refreshToken);
+      const newAccessToken = this.jwt.sign({ sub: payload.sub, email: payload.email }, { expiresIn: '15m' });
+      return { accessToken: newAccessToken };
+    } catch (err) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
+
 
   @Post('verify')
   async verifyCode(@Body() verifyCode: VerifyCodeDto) {
