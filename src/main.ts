@@ -6,7 +6,11 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: ['https://7-edu-admin-ehvf.vercel.app/', "https://sevenedu.uz/"],
+    origin: [
+      'http://localhost:3001',
+      'https://7-edu-admin-ehvf.vercel.app',
+      'https://sevenedu.uz'
+    ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
@@ -14,7 +18,7 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
   const server = await app.listen(process.env.PORT ?? 3000);
-  
+
   server.setTimeout(1000 * 60 * 50);
 }
 
