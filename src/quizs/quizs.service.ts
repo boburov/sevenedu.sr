@@ -7,26 +7,26 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class QuizsService {
   constructor(private prisma: PrismaService) { }
 
-  async create(createQuizDto: CreateQuizDto, lessonId: string) {
-    const { quession, option1, option2, option3,  } = createQuizDto;
+ async create(createQuizDto: CreateQuizDto, lessonId: string) {
+  const { quession, option1, option2, option3, current } = createQuizDto;
 
-    const lesson = await this.prisma.lessons.findFirst({ where: { id: lessonId } });
+  const lesson = await this.prisma.lessons.findFirst({ where: { id: lessonId } });
 
-    if (!lesson) throw new HttpException(`Lesson not found`, 404);
+  if (!lesson) throw new HttpException(`Lesson not found`, 404);
 
-    return await this.prisma.quizs.create({
-      data: {
-        quiz: quession,
-        Lessons: {
-          connect: { id: lessonId },
-        },
-        option1,
-        option2,
-        option3,
-        currentOption: option1,
+  return await this.prisma.quizs.create({
+    data: {
+      quiz: quession,
+      Lessons: {
+        connect: { id: lessonId },
       },
-    });
-  }
+      option1,
+      option2,
+      option3,
+      currentOption: current,
+    },
+  });
+}
 
   async findAll(id: string) {
     return await this.prisma.quizs.findFirst({ where: { id } });

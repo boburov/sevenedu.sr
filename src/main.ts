@@ -17,7 +17,7 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
-  const server = await app.listen(process.env.PORT ?? 3000);
+  const server = await app.listen(30066);
 
   server.setTimeout(1000 * 60 * 50);
 }
