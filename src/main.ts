@@ -7,12 +7,15 @@ async function bootstrap() {
 
   app.enableCors({
     origin: [
-      'https://localhost:3001',
+      'http://localhost:3001',
       'https://7-edu-admin-ehvf.vercel.app',
       'https://sevenedu.uz'
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
+    credentials: true, // cookie/token yuborilsa kerak bo‘lsa
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   });
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
