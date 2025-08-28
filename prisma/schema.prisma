@@ -73,7 +73,7 @@ model UserCourse {
   joinedAt   DateTime @default(now())
 
   user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course CoursesCategory @relation(fields: [courseId], references: [id])
+  course CoursesCategory @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@unique([userId, courseId])
 }
@@ -84,7 +84,7 @@ model Lessons {
   isDemo            Boolean          @default(false)
   videoUrl          String
   coursesCategoryId String
-  coursesCategory   CoursesCategory  @relation("CategoryLessons", fields: [coursesCategoryId], references: [id])
+  coursesCategory   CoursesCategory  @relation("CategoryLessons", fields: [coursesCategoryId], references: [id], onDelete: Cascade)
   order             Int              @default(0)
   dictonary         Dictonary[]      @relation("Dictonary")
   quizs             Quizs[]          @relation("Quizs")
@@ -109,8 +109,8 @@ model LessonActivity {
   quizWrong   Int @default(0)
 
   user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lesson Lessons          @relation(fields: [lessonsId], references: [id])
-  course CoursesCategory? @relation(fields: [courseId], references: [id])
+  lesson Lessons          @relation(fields: [lessonsId], references: [id], onDelete: Cascade)
+  course CoursesCategory? @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@unique([userId, lessonsId])
 }
@@ -124,7 +124,7 @@ model Quizs {
   option3       String
   currentOption String
 
-  Lessons Lessons @relation("Quizs", fields: [lessonsId], references: [id])
+  Lessons Lessons @relation("Quizs", fields: [lessonsId], references: [id], onDelete: Cascade)
 }
 
 model Dictonary {
@@ -133,7 +133,7 @@ model Dictonary {
   translated String
   lessonsId  String
 
-  Lessons Lessons @relation("Dictonary", fields: [lessonsId], references: [id])
+  Lessons Lessons @relation("Dictonary", fields: [lessonsId], references: [id], onDelete: Cascade)
 }
 
 model Notification {
@@ -145,7 +145,7 @@ model Notification {
   sentAt    DateTime @default(now())
 
   courseId String?
-  course   CoursesCategory? @relation(fields: [courseId], references: [id])
+  course   CoursesCategory? @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   recipients NotificationRecipient[]
   readBy     NotificationRead[]
@@ -170,7 +170,7 @@ model NotificationRead {
   readAt         DateTime @default(now())
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  notification Notification @relation(fields: [notificationId], references: [id])
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
 
   @@unique([userId, notificationId])
 }
@@ -180,7 +180,7 @@ model Quessions {
   quession  String
   lessonsId String
 
-  Lessons Lessons @relation("Quessions", fields: [lessonsId], references: [id])
+  Lessons Lessons @relation("Quessions", fields: [lessonsId], references: [id], onDelete: Cascade)
 }
 
 model LessonAIUsage {
@@ -203,7 +203,7 @@ model Certificate {
   issuedAt DateTime @default(now())
 
   user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course CoursesCategory @relation(fields: [courseId], references: [id])
+  course CoursesCategory @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@unique([userId, courseId])
 }
