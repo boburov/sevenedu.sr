@@ -125,7 +125,7 @@ export class CoursesService {
     for (const { coursesCategoryId } of categories) {
       const lessons = await this.prisma.lessons.findMany({
         where: { coursesCategoryId },
-        orderBy: { id: 'asc' }, 
+        orderBy: { id: 'asc' },
       });
 
       for (let i = 0; i < lessons.length; i++) {
@@ -260,10 +260,21 @@ export class CoursesService {
   }
 
   async deleteLesson(id: string) {
-    const lesson = await this.prisma.lessons.delete({ where: { id } })
-    this.uploadService.deleteFile(lesson.videoUrl)
-    return { msg: "lesson deleted" }
+    // avval bog‘langan childlarni o‘chir
+    await this.prisma.lessonActivity.deleteMany({ where: { lessonsId: id } });
+    await this.prisma.dictonary.deleteMany({ where: { lessonsId: id } });
+    await this.prisma.quizs.deleteMany({ where: { lessonsId: id } });
+    await this.prisma.quessions.deleteMany({ where: { lessonsId: id } });
+
+    // keyin lessonni o‘chir
+    const lesson = await this.prisma.lessons.delete({ where: { id } });
+
+    // videoni o‘chir
+    await this.uploadService.deleteFile(lesson.videoUrl);
+
+    return { msg: "lesson deleted" };
   }
+
 
   async removeCategory(id: string) {
     const category = await this.prisma.coursesCategory.findFirst({ where: { id } });
