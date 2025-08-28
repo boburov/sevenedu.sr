@@ -260,33 +260,18 @@ export class CoursesService {
   }
 
   async deleteLesson(id: string) {
-    // Transaction ichida hammasini qilamiz, shunda xatolik bo‘lsa rollback bo‘ladi
     return this.prisma.$transaction(async (tx) => {
-      // Avval childlarni o‘chiramiz
-      await tx.dictonary.deleteMany({
-        where: { lessonsId: id },
-      });
-      await tx.quizs.deleteMany({
-        where: { lessonsId: id },
-      });
-      await tx.quessions.deleteMany({
-        where: { lessonsId: id },
-      });
-      await tx.lessonActivity.deleteMany({
-        where: { lessonsId: id },
-      });
+      await tx.dictonary.deleteMany({ where: { lessonsId: id } });
+      await tx.quizs.deleteMany({ where: { lessonsId: id } });
+      await tx.quessions.deleteMany({ where: { lessonsId: id } });
 
-      // Keyin lessonning o‘zini o‘chiramiz
-      const lesson = await tx.lessons.delete({
-        where: { id },
-      });
+      const lesson = await tx.lessons.delete({ where: { id } });
 
-      // Agar video bo‘lsa, storage dan ham o‘chiramiz
       if (lesson.videoUrl) {
         await this.uploadService.deleteFile(lesson.videoUrl);
       }
 
-      return { msg: "Lesson va unga bog‘liq barcha childlar muvaffaqiyatli o‘chirildi" };
+      return { msg: "Lesson va childlar muvaffaqiyatli o‘chirildi" };
     });
   }
 
