@@ -261,19 +261,23 @@ export class CoursesService {
 
   async deleteLesson(id: string) {
     return this.prisma.$transaction(async (tx) => {
+      // Bog‘langan childlarni avval o‘chir
       await tx.dictonary.deleteMany({ where: { lessonsId: id } });
       await tx.quizs.deleteMany({ where: { lessonsId: id } });
       await tx.quessions.deleteMany({ where: { lessonsId: id } });
+      await tx.lessonActivity.deleteMany({ where: { lessonsId: id } }); // <-- bu MUHIM!
 
+      // Keyin asosiy lesson’ni o‘chir
       const lesson = await tx.lessons.delete({ where: { id } });
 
       if (lesson.videoUrl) {
         await this.uploadService.deleteFile(lesson.videoUrl);
       }
 
-      return { msg: "Lesson va childlar muvaffaqiyatli o‘chirildi" };
+      return { msg: "Lesson va barcha childlar muvaffaqiyatli o‘chirildi" };
     });
   }
+
 
 
   async removeCategory(id: string) {
