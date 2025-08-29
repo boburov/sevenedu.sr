@@ -99,7 +99,6 @@ export class CoursesService {
     const get = this.prisma.coursesCategory.findFirst({ where: { id }, include: { lessons: true } });
     return get;
   }
-
   async createCategory(
     dto: CreateCategoryCourseDto,
     file: Express.Multer.File
@@ -281,8 +280,6 @@ export class CoursesService {
     });
 
   }
-
-
 
   async removeCategory(id: string) {
     const category = await this.prisma.coursesCategory.findFirst({ where: { id } });
