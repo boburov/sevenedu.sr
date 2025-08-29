@@ -65,16 +65,44 @@ export class CoursesService {
       .sort((a, b) => a.sort - b.sort)
       .map(({ value }) => value);
   }
-
   async getAll() {
     const courses = await this.prisma.coursesCategory.findMany({
       include: {
-        lessons: {}
+        lessons: {
+          select: {
+            id: true,
+            title: true,
+            isDemo: true,
+            videoUrl: true,
+            order: true,
+            isVisible: true, // shu yerda isVisible ni qaytaramiz
+          },
+          orderBy: { order: 'asc' }
+        }
       }
     });
     return courses;
   }
 
+  async getcategory(id: string) {
+    const get = await this.prisma.coursesCategory.findFirst({
+      where: { id },
+      include: {
+        lessons: {
+          select: {
+            id: true,
+            title: true,
+            isDemo: true,
+            videoUrl: true,
+            order: true,
+            isVisible: true, // shu yerda ham
+          },
+          orderBy: { order: 'asc' }
+        }
+      }
+    });
+    return get;
+  }
   async getLessonById(id: string) {
     const lesson = await this.prisma.lessons.findFirst({
       include: {}
@@ -84,10 +112,7 @@ export class CoursesService {
     return lesson;
   }
 
-  async getcategory(id: string) {
-    const get = this.prisma.coursesCategory.findFirst({ where: { id }, include: { lessons: { where: { isVisible: true } } } });
-    return get;
-  }
+
   async createCategory(
     dto: CreateCategoryCourseDto,
     file: Express.Multer.File
