@@ -71,7 +71,7 @@ export class UserService {
           include: {
             lesson: true
           }
-          
+
         },
         courses: true,
         notifications: {
@@ -180,51 +180,59 @@ export class UserService {
   }
 
   async chatWithAI(userId: string, lessonId: string, message: string): Promise<string> {
-    const today = new Date();
-    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+    try {
+      const today = new Date();
+      const startOfDay = new Date(today.setHours(0, 0, 0, 0));
 
-    let usage = await this.prisma.lessonAIUsage.findFirst({
-      where: {
-        userId,
-        lessonId,
-        date: { gte: startOfDay },
-      },
-    });
-
-    if (!usage) {
-      usage = await this.prisma.lessonAIUsage.create({
-        data: {
+      let usage = await this.prisma.lessonAIUsage.findFirst({
+        where: {
           userId,
           lessonId,
-          date: new Date(),
-          count: 1,
+          date: { gte: startOfDay },
         },
       });
-    } else if (usage.count >= 5) {
-      throw new ForbiddenException('Siz bugungi 10 ta kreditdan foydalandingiz.');
-    } else {
-      await this.prisma.lessonAIUsage.update({
-        where: { id: usage.id },
-        data: { count: { increment: 1 } },
+
+      if (!usage) {
+        usage = await this.prisma.lessonAIUsage.create({
+          data: {
+            userId,
+            lessonId,
+            date: new Date(),
+            count: 1,
+          },
+        });
+      } else if (usage.count >= 7) {
+        throw new ForbiddenException('Siz bugungi 7 ta kreditdan foydalandingiz.');
+      } else {
+        await this.prisma.lessonAIUsage.update({
+          where: { id: usage.id },
+          data: { count: { increment: 1 } },
+        });
+      }
+
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: [
+          {
+            role: 'system',
+            content: 'Siz foydalanuvchiga til o‘rgatadigan ustozsiz. Har savolga aniq, qisqa, o‘zbek tilida javob bering. Dars mavzusidan chiqmay javob bering.',
+          },
+          { role: 'user', content: message },
+        ],
       });
+
+      return completion.choices[0].message?.content ?? 'Javob topilmadi.';
+    } catch (error) {
+      console.error('GPT chat xatosi:', error);
+
+      if (error instanceof ForbiddenException) {
+        throw error; // limit xatosi foydalanuvchiga kerak
+      }
+
+      throw new InternalServerErrorException('AI javobi olinmadi. Iltimos, keyinroq qayta urinib ko‘ring.');
     }
-
-    const completion = await this.openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        {
-          role: 'system',
-          content: `Siz foydalanuvchiga til o‘rgatadigan ustozsiz. Har savolga aniq, qisqa, o‘zbek tilida javob bering. Dars mavzusidan chiqmay javob bering.`,
-        },
-        {
-          role: 'user',
-          content: message,
-        },
-      ],
-    });
-
-    return completion.choices[0].message?.content ?? 'Javob topilmadi.';
   }
+
 
   async getUserProgress(userId: string) {
     const user = await this.prisma.user.findUnique({

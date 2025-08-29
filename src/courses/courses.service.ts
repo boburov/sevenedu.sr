@@ -67,23 +67,33 @@ export class CoursesService {
   }
 
   async getAll() {
-    const course = await this.prisma.coursesCategory.findMany({
+    const courses = await this.prisma.coursesCategory.findMany({
       include: {
         lessons: {
           include: {
             quizs: true,
             dictonary: true
-          }
+          },
         }
       }
     });
-    return course;
+    return courses;
   }
 
   async getLessonById(id: string) {
-    const lesson = await this.prisma.lessons.findFirst({ where: { id, }, include: { quizs: true, dictonary: true } })
-    return lesson
+    const lesson = await this.prisma.lessons.findFirst({
+      where: { id },
+      include: {
+        quizs: true,
+        dictonary: true
+      }
+    });
+
+    if (!lesson) throw new NotFoundException('Dars topilmadi');
+    return lesson;
   }
+
+
 
   async getcategory(id: string) {
     const get = this.prisma.coursesCategory.findFirst({ where: { id }, include: { lessons: true } });
@@ -112,7 +122,6 @@ export class CoursesService {
 
     return newCategory;
   }
-
 
   async updateLessonOrdersByCategory() {
     const categories = await this.prisma.lessons.findMany({
@@ -184,7 +193,6 @@ export class CoursesService {
       updatedLessons,
     };
   }
-
 
   async createCourse(createCourse: CreateLessonDto, id: string, file: Express.Multer.File) {
     const { title, isDemo, } = createCourse;
@@ -260,22 +268,18 @@ export class CoursesService {
   }
 
   async deleteLesson(id: string) {
-    return this.prisma.$transaction(async (tx) => {
-      // Bog‘langan childlarni avval o‘chir
-      await tx.dictonary.deleteMany({ where: { lessonsId: id } });
-      await tx.quizs.deleteMany({ where: { lessonsId: id } });
-      await tx.quessions.deleteMany({ where: { lessonsId: id } });
-      await tx.lessonActivity.deleteMany({ where: { lessonsId: id } }); // <-- bu MUHIM!
+    const lesson = await this.prisma.lessons.findFirst({
+      where: { id }
+    })
+    if (!lesson) {
+      throw new Error('Lesson topilmadi');
+    }
 
-      // Keyin asosiy lesson’ni o‘chir
-      const lesson = await tx.lessons.delete({ where: { id } });
-
-      if (lesson.videoUrl) {
-        await this.uploadService.deleteFile(lesson.videoUrl);
-      }
-
-      return { msg: "Lesson va barcha childlar muvaffaqiyatli o‘chirildi" };
+    return this.prisma.lessons.update({
+      where: { id },
+      data: { isVisible: false },
     });
+
   }
 
 

@@ -152,7 +152,7 @@ export class CoursesController {
     return this.courseService.updateLesson(id, dto, file);
   }
 
-  @Delete("lesson/:id")
+  @Patch("lesson/:id")
   async deleteLEsson(@Param('id') id: string) {
     return this.courseService.deleteLesson(id)
   }

@@ -11,8 +11,7 @@ datasource db {
 enum UserRole {
   USER
   ADMIN
-  SUPERADMIN
-  SELLER
+  CREATOR
 }
 
 model User {
@@ -87,6 +86,7 @@ model Lessons {
   coursesCategory   CoursesCategory  @relation("CategoryLessons", fields: [coursesCategoryId], references: [id], onDelete: Cascade)
   order             Int              @default(0)
   dictonary         Dictonary[]      @relation("Dictonary")
+  isVisible         Boolean          @default(true)
   quizs             Quizs[]          @relation("Quizs")
   questions         Quessions[]      @relation("Quessions")
   lessonActivity    LessonActivity[]

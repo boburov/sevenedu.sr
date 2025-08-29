@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Query, Req, UploadedFile, UseGuards, UseInterceptors, HttpException, Post, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Query, Req, UploadedFile, UseGuards, UseInterceptors, HttpException, Post, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -67,14 +67,11 @@ export class UserController {
     return this.userService.getDailyStats(req.user.id);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('chat')
   async chatWithAI(
-    @Body() body: { lessonId: string; message: string },
-    @Req() req,
+    @Body() body: { lessonId: string; message: string; userId: string },
   ): Promise<{ answer: string }> {
-    const userId = req.user.id;
-    const answer = await this.userService.chatWithAI(userId, body.lessonId, body.message);
+    const answer = await this.userService.chatWithAI(body.userId, body.lessonId, body.message);
     return { answer };
   }
 
@@ -98,6 +95,8 @@ export class UserController {
 
     return { count: usage?.count || 0 };
   }
+
+
 
   @Get(':id')
   async getUserById(@Param('id') id: string) {
