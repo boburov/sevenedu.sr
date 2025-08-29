@@ -69,12 +69,7 @@ export class CoursesService {
   async getAll() {
     const courses = await this.prisma.coursesCategory.findMany({
       include: {
-        lessons: {
-          include: {
-            quizs: true,
-            dictonary: true
-          },
-        }
+        lessons: {}
       }
     });
     return courses;
@@ -82,10 +77,7 @@ export class CoursesService {
 
   async getLessonById(id: string) {
     const lesson = await this.prisma.lessons.findFirst({
-      include: {
-        quizs: true,
-        dictonary: true
-      }
+      include: {}
     });
 
     if (!lesson) throw new NotFoundException('Dars topilmadi');
