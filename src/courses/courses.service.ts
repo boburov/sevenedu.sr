@@ -70,6 +70,7 @@ export class CoursesService {
     const courses = await this.prisma.coursesCategory.findMany({
       include: {
         lessons: {
+          where: {},
           include: {
             quizs: true,
             dictonary: true
@@ -82,7 +83,7 @@ export class CoursesService {
 
   async getLessonById(id: string) {
     const lesson = await this.prisma.lessons.findFirst({
-      where: { id },
+      where: { id, isVisible: true },
       include: {
         quizs: true,
         dictonary: true
@@ -93,10 +94,8 @@ export class CoursesService {
     return lesson;
   }
 
-
-
   async getcategory(id: string) {
-    const get = this.prisma.coursesCategory.findFirst({ where: { id }, include: { lessons: true } });
+    const get = this.prisma.coursesCategory.findFirst({ where: { id }, include: { lessons: { where: { isVisible: true } } } });
     return get;
   }
   async createCategory(
