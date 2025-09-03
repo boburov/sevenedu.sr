@@ -1,14 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  S3Client,
-  PutObjectCommand,
-  CreateMultipartUploadCommand,
-  UploadPartCommand,
-  CompleteMultipartUploadCommand,
-  CompletedPart,
-  DeleteObjectCommand,
-} from '@aws-sdk/client-s3';
+import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
 import * as path from 'path';
 
 @Injectable()
@@ -16,9 +9,6 @@ export class UploadsService {
   private s3: S3Client;
   private bucket: string;
   private region: string;
-
-  private readonly MAX_SINGLE_UPLOAD = 100 * 1024 * 1024; // 100MB
-  private readonly CHUNK_SIZE = 10 * 1024 * 1024; // 10MB
 
   constructor(private configService: ConfigService) {
     const aws = this.configService.get('aws');
@@ -40,73 +30,23 @@ export class UploadsService {
       throw new Error('File topilmadi. Iltimos, tekshirib ko‘ring.');
     }
 
-    if (file.buffer.length > this.MAX_SINGLE_UPLOAD) {
-      return this.uploadLargeFile(file, folder);
-    }
-
     const ext = path.extname(file.originalname);
     const filename = `${folder}/${Date.now()}${ext}`;
 
-    const command = new PutObjectCommand({
-      Bucket: this.bucket,
-      Key: filename,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-    });
-
-    await this.s3.send(command);
-
-    return `https://${this.bucket}.s3.${this.region}.amazonaws.com/${filename}`;
-  }
-
-  private async uploadLargeFile(file: Express.Multer.File, folder: 'images' | 'videos') {
-    const ext = path.extname(file.originalname);
-    const filename = `${folder}/${Date.now()}${ext}`;
-
-    const createCommand = new CreateMultipartUploadCommand({
-      Bucket: this.bucket,
-      Key: filename,
-      ContentType: file.mimetype,
-    });
-
-    const createResponse = await this.s3.send(createCommand);
-    const uploadId = createResponse.UploadId;
-    if (!uploadId) throw new Error('Multipart upload yaratib bo‘lmadi.');
-
-    const parts: CompletedPart[] = [];
-
-    for (let partNumber = 1, start = 0; start < file.buffer.length; partNumber++) {
-      const end = Math.min(start + this.CHUNK_SIZE, file.buffer.length);
-      const partBuffer = file.buffer.slice(start, end);
-
-      const uploadPartCommand = new UploadPartCommand({
+    // ✅ Stream orqali upload
+    const upload = new Upload({
+      client: this.s3,
+      params: {
         Bucket: this.bucket,
         Key: filename,
-        UploadId: uploadId,
-        PartNumber: partNumber,
-        Body: partBuffer,
-      });
-
-      const uploadPartResponse = await this.s3.send(uploadPartCommand);
-
-      parts.push({
-        ETag: uploadPartResponse.ETag,
-        PartNumber: partNumber,
-      });
-
-      start = end;
-    }
-
-    const completeCommand = new CompleteMultipartUploadCommand({
-      Bucket: this.bucket,
-      Key: filename,
-      UploadId: uploadId,
-      MultipartUpload: {
-        Parts: parts,
+        Body: file.stream, // << stream ishlatilyapti
+        ContentType: file.mimetype,
       },
+      partSize: 10 * 1024 * 1024, // 10MB bo‘lib yuboradi
+      leavePartsOnError: false,
     });
 
-    await this.s3.send(completeCommand);
+    await upload.done();
 
     return `https://${this.bucket}.s3.${this.region}.amazonaws.com/${filename}`;
   }
