@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import * as path from 'path';
+import { Readable } from 'stream';
 
 @Injectable()
 export class UploadsService {
@@ -30,6 +31,19 @@ export class UploadsService {
       throw new Error('File topilmadi. Iltimos, tekshirib ko‘ring.');
     }
 
+    // ✅ To'g'ri stream yaratish
+    let fileStream: Readable;
+    
+    if (file.stream && typeof file.stream === 'object' && 'on' in file.stream) {
+      // Agar file.stream Node.js Readable stream bo'lsa
+      fileStream = file.stream as Readable;
+    } else if (file.buffer) {
+      // Agar buffer mavjud bo'lsa, undan Readable stream yaratish
+      fileStream = Readable.from(file.buffer);
+    } else {
+      throw new Error('Faylda stream yoki buffer topilmadi');
+    }
+
     const ext = path.extname(file.originalname);
     const filename = `${folder}/${Date.now()}${ext}`;
 
@@ -39,10 +53,10 @@ export class UploadsService {
       params: {
         Bucket: this.bucket,
         Key: filename,
-        Body: file.stream, // << stream ishlatilyapti
+        Body: fileStream, // << Endi to'g'ri tur
         ContentType: file.mimetype,
       },
-      partSize: 10 * 1024 * 1024, // 10MB bo‘lib yuboradi
+      partSize: 10 * 1024 * 1024, // 10MB bo'lib yuboradi
       leavePartsOnError: false,
     });
 
@@ -61,7 +75,7 @@ export class UploadsService {
       await this.s3.send(deleteCommand);
       return true;
     } catch (error) {
-      console.error('S3 faylni o‘chirishda xatolik:', error.message);
+      console.error('S3 faylni o\'chirishda xatolik:', error.message);
       return false;
     }
   }

@@ -4,11 +4,13 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   HttpException,
   HttpStatus,
   Param,
   Patch,
   Post,
+  Put,
   Req,
   Res,
   UploadedFile,
@@ -24,6 +26,8 @@ import { UpdateLessonDto } from './dto/update-lesson.dto';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { SaveVocabularyResultDto } from './dto/save-vocabulary-result.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
+import { RelocateLessonsDto } from './dto/relocate.dto';
 
 @Controller('courses')
 export class CoursesController {
@@ -34,14 +38,19 @@ export class CoursesController {
     return this.courseService.getAll()
   }
 
+
   @Patch('fix-video-urls')
   async fixVideoUrls() {
     return this.courseService.fixAllVideoUrls();
   }
 
-  @Patch('reorder')
-  async reorderLessons() {
-    return this.courseService.updateLessonOrdersByCategory();
+
+  @Put(':categoryId/reorder-lessons')
+  async reorderLessons(
+    @Param('categoryId') categoryId: string,
+    @Body() reorderData: { lessonId: string; newIndex: number } | Array<{ lessonId: string; newIndex: number }>,
+  ) {
+    return this.courseService.reorderLessons(categoryId, reorderData);
   }
 
 
@@ -109,7 +118,7 @@ export class CoursesController {
     return this.courseService.createCategory(dto, file);
   }
 
-  @Post('category/:id/lesson')
+  @Post(':id/lesson')
   @UseInterceptors(FileInterceptor('video'))
   async createNewLesson(
     @Param('id') id: string,
