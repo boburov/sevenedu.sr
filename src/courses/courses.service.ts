@@ -65,24 +65,26 @@ export class CoursesService {
       .sort((a, b) => a.sort - b.sort)
       .map(({ value }) => value);
   }
+
   async getAll() {
-    const courses = await this.prisma.coursesCategory.findMany({
-      include: {
-        lessons: {
-          select: {
-            id: true,
-            title: true,
-            isDemo: true,
-            videoUrl: true,
-            order: true,
-            isVisible: true, // shu yerda isVisible ni qaytaramiz
-          },
-          orderBy: { order: 'asc' }
-        }
+  const courses = await this.prisma.coursesCategory.findMany({
+    include: {
+      lessons: {
+        select: {
+          id: true,
+          title: true,
+          isDemo: true,
+          videoUrl: true,
+          SentencePuzzle: true,
+          order: true,
+          isVisible: true,
+        },
+        orderBy: { order: 'asc' }
       }
-    });
-    return courses;
-  }
+    }
+  });
+  return courses;
+}
 
 
   async reorderLessons(categoryId: string, reorderData: { lessonId: string; newIndex: number } | Array<{ lessonId: string; newIndex: number }>) {
@@ -177,7 +179,10 @@ export class CoursesService {
   }
   async getLessonById(id: string) {
     const lesson = await this.prisma.lessons.findFirst({
-      include: {}
+      where: { id },
+      include: {
+        
+      }
     });
 
     if (!lesson) throw new NotFoundException('Dars topilmadi');
