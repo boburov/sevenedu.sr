@@ -90,9 +90,21 @@ model Lessons {
   quizs             Quizs[]          @relation("Quizs")
   questions         Quessions[]      @relation("Quessions")
   lessonActivity    LessonActivity[]
+  sentencePuzzles   SentencePuzzle[]   @relation("LessonSentencePuzzle") // <<< SHU YERDA
 
   @@unique([coursesCategoryId, order])
 }
+
+model SentencePuzzle {
+  id       String   @id @default(uuid())
+  sentence String
+  answer   String
+  lessonId String
+  lesson   Lessons  @relation("LessonSentencePuzzle", fields: [lessonId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
 
 model LessonActivity {
   id        String   @id @default(uuid())

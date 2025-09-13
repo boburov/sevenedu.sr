@@ -7,7 +7,6 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Hamma domainni ruxsat qilamiz
       callback(null, origin || '*');
     },
     credentials: true,
@@ -16,6 +15,6 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
   const server = await app.listen(30066);
-  server.setTimeout(1000 * 60 * 50); // 50 minut timeout
+  server.setTimeout(1000 * 60 * 50);
 }
 bootstrap();
