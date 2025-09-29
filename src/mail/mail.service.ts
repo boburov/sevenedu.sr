@@ -9,7 +9,7 @@ export class MailService {
     secure: true,
     auth: {
       user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS || "sbhzpnzxdfvvympv",
+      pass: process.env.EMAIL_PASS ,
     },
   });
 

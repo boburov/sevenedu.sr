@@ -1,15 +1,22 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { DictonaryService } from './dictonary.service';
 import { CreateDictonaryDto } from './dto/create-dictonary.dto';
-import { UpdateDictonaryDto } from './dto/update-dictonary.dto';
 
 @Controller('dictonary')
 export class DictonaryController {
-  constructor(private readonly dictonaryService: DictonaryService) { }
+  constructor(private readonly dictonaryService: DictonaryService) {}
 
-  @Post(":id/add")
-  async create(@Body() dto: CreateDictonaryDto, @Param("id") id: string) {
-    return this.dictonaryService.create(dto, id);
+  @Post(':id/add')
+  async create(@Body() dto: CreateDictonaryDto, @Param('id') id: string) {
+    return this.dictonaryService.createMany(dto.items, id);
   }
 
   @Get(':id')
@@ -18,8 +25,8 @@ export class DictonaryController {
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateDictonaryDto: UpdateDictonaryDto) {
-    return this.dictonaryService.update(id, updateDictonaryDto);
+  async update(@Param('id') id: string, @Body() body: any) {
+    return this.dictonaryService.update(id, body);
   }
 
   @Delete(':id')
