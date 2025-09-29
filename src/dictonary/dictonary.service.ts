@@ -1,58 +1,50 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class DictonaryService {
   constructor(private prisma: PrismaService) {}
 
-  async createMany(items: { word: string; translated: string }[], id: string) {
-    if (!items || items.length === 0) {
-      throw new HttpException('Kamida bitta soʻz yuboring!', 400);
+  async createMany(
+    items: { word: string; translated: string }[] | { word: string; translated: string },
+    lessonId: string,
+  ) {
+    const data = Array.isArray(items) ? items : [items];
+
+    if (data.length === 0) {
+      throw new BadRequestException('Kamida bitta so‘z bo‘lishi kerak');
     }
 
-    const words = items.map((i) => i.word);
-    const existing = await this.prisma.dictonary.findMany({
-      where: { word: { in: words } },
-    });
-
-    if (existing.length > 0) {
-      throw new HttpException(
-        `Bu so'zlar mavjud: ${existing.map((e) => e.word).join(', ')}`,
-        400,
-      );
-    }
-
-    const created = await this.prisma.dictonary.createMany({
-      data: items.map((i) => ({
-        word: i.word,
-        translated: i.translated,
-        lessonsId: id,
+    return this.prisma.dictonary.createMany({
+      data: data.map((item) => ({
+        word: item.word,
+        translated: item.translated,
+        lessonsId: lessonId,
       })),
     });
-
-    return {
-      count: created.count,
-      message: `${created.count} ta so'z muvaffaqiyatli qo'shildi!`,
-    };
   }
 
-  async findOne(id: string) {
-    const find = await this.prisma.dictonary.findFirst({ where: { id } });
-    if (!find) throw new HttpException('Soʻz topilmadi', 404);
-    return find;
+  async getByLessonId(lessonId: string) {
+    const words = await this.prisma.dictonary.findMany({
+      where: { lessonsId: lessonId },
+      orderBy: { word: 'asc' },
+    });
+
+    if (!words || words.length === 0) {
+      throw new NotFoundException('Bu darsga lug‘at topilmadi');
+    }
+
+    return words;
   }
 
-  async update(id: string, data: { word: string; translated: string }) {
-    const find = await this.prisma.dictonary.findFirst({ where: { id } });
-    if (!find) throw new HttpException('Soʻz topilmadi', 404);
-
-    return await this.prisma.dictonary.update({
+  async update(id: string, body: Partial<{ word: string; translated: string }>) {
+    return this.prisma.dictonary.update({
       where: { id },
-      data,
+      data: body,
     });
   }
 
   async remove(id: string) {
-    return await this.prisma.dictonary.delete({ where: { id } });
+    return this.prisma.dictonary.delete({ where: { id } });
   }
 }

@@ -14,14 +14,17 @@ import { CreateDictonaryDto } from './dto/create-dictonary.dto';
 export class DictonaryController {
   constructor(private readonly dictonaryService: DictonaryService) {}
 
-  @Post(':id/add')
-  async create(@Body() dto: CreateDictonaryDto, @Param('id') id: string) {
-    return this.dictonaryService.createMany(dto.items, id);
+  @Post(':lessonId/add')
+  async create(
+    @Body() dto: CreateDictonaryDto,
+    @Param('lessonId') lessonId: string,
+  ) {
+    return this.dictonaryService.createMany(dto.items, lessonId);
   }
 
-  @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.dictonaryService.findOne(id);
+  @Get('lesson/:lessonId')
+  async getByLesson(@Param('lessonId') lessonId: string) {
+    return this.dictonaryService.getByLessonId(lessonId);
   }
 
   @Patch(':id')
