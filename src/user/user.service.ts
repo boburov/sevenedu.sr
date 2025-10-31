@@ -2,6 +2,7 @@ import {
   ForbiddenException,
   HttpException,
   Injectable,
+  Logger,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
@@ -13,9 +14,11 @@ import OpenAI from 'openai';
 import { ConfigService } from '@nestjs/config';
 import { eachDayOfInterval, subDays } from 'date-fns';
 import { format } from 'date-fns';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class UserService {
+  private readonly logger = new Logger(UserService.name);
   private openai: OpenAI;
   constructor(
     private prisma: PrismaService,
@@ -27,6 +30,163 @@ export class UserService {
     });
   }
 
+  // Har kuni tungi 2:00 da ishlaydi
+  @Cron(CronExpression.EVERY_DAY_AT_2AM)
+  async handleMonthlySubscriptionExpiry() {
+    this.logger.log('Monthly subscription tekshiruvi boshlandi...');
+
+    try {
+      const expiredSubscriptions = await this.prisma.userCourse.findMany({
+        where: {
+          subscription: 'MONTHLY',
+          joinedAt: {
+            // 30 kundan oldin qo'shilgan kurslar
+            lte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+          },
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+            },
+          },
+          course: {
+            select: {
+              id: true,
+              title: true,
+            },
+          },
+        },
+      });
+
+      if (expiredSubscriptions.length === 0) {
+        this.logger.log('Muddati tugagan monthly subscription lar topilmadi');
+        return;
+      }
+
+      this.logger.log(
+        `${expiredSubscriptions.length} ta expired subscription topildi`,
+      );
+
+      // Kurslarni o'chirish
+      const deleteResult = await this.prisma.userCourse.deleteMany({
+        where: {
+          id: {
+            in: expiredSubscriptions.map((sub) => sub.id),
+          },
+        },
+      });
+
+      this.logger.log(
+        `${deleteResult.count} ta monthly subscription o'chirildi`,
+      );
+
+      // Foydalanuvchilarga notification yuborish (ixtiyoriy)
+      await this.sendExpiryNotifications(expiredSubscriptions);
+    } catch (error) {
+      this.logger.error('Monthly subscription tekshiruvida xatolik:', error);
+    }
+  }
+
+  private async sendExpiryNotifications(expiredSubscriptions: any[]) {
+    try {
+      // Har bir foydalanuvchi uchun notification yaratish
+      for (const subscription of expiredSubscriptions) {
+        await this.prisma.notification.create({
+          data: {
+            title: 'Kurs muddati tugadi',
+            message: `"${subscription.course.title}" kursi uchun sizning monthly subscription muddati tugadi. Kurs qayta aktivlashtirilishi kerak.`,
+            isGlobal: false,
+            recipients: {
+              create: {
+                userId: subscription.user.id,
+              },
+            },
+          },
+        });
+      }
+
+      this.logger.log(
+        `${expiredSubscriptions.length} ta notification yuborildi`,
+      );
+    } catch (error) {
+      this.logger.error('Notification yuborishda xatolik:', error);
+    }
+  }
+
+  // Har yakshanba kuni tungi 3:00 da ishlaydi (haftalik tekshiruv)
+  @Cron(CronExpression.EVERY_WEEK)
+  async weeklySubscriptionCheck() {
+    this.logger.log('Haftalik subscription tekshiruvi boshlandi...');
+
+    // Qo'shimcha tekshiruvlar uchun
+    const upcomingExpiries = await this.prisma.userCourse.findMany({
+      where: {
+        subscription: 'MONTHLY',
+        joinedAt: {
+          // 25-29 kun oralig'ida qo'shilgan kurslar (tekshiruvdan 5 kun oldin)
+          lte: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+          gte: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000),
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+        course: {
+          select: {
+            title: true,
+          },
+        },
+      },
+    });
+
+    if (upcomingExpiries.length > 0) {
+      // Muddati yaqinlashayotgan foydalanuvchilarga ogohlantirish
+      for (const subscription of upcomingExpiries) {
+        await this.prisma.notification.create({
+          data: {
+            title: 'Kurs muddati yaqinlashmoqda',
+            message: `"${subscription.course.title}" kursi uchun sizning monthly subscription muddati 5 kundan keyin tugaydi.`,
+            isGlobal: false,
+            recipients: {
+              create: {
+                userId: subscription.user.id,
+              },
+            },
+          },
+        });
+      }
+
+      this.logger.log(`${upcomingExpiries.length} ta ogohlantirish yuborildi`);
+    }
+  }
+
+  async deleteUser(id: string) {
+    try {
+      // XATO: where: { id: { id: id } } - NOTO'G'RI
+      // TO'G'RI: where: { id: id }
+      const user = await this.prisma.user.findFirst({ where: { id } });
+
+      if (!user) throw new HttpException('User not found', 404);
+
+      await this.prisma.user.delete({ where: { id } });
+
+      return {
+        msg: 'User ochirildi',
+      };
+    } catch (error) {
+      console.log(error);
+      // Xatoni qaytarish kerak
+      throw new InternalServerErrorException("User ni o'chirishda xatolik");
+    }
+  }
   async assignCourseToUser(
     email: string,
     courseId: string,

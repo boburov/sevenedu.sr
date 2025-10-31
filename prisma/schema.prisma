@@ -18,7 +18,6 @@ enum SubscriptionType {
   MONTHLY
   FULL_CHARGE
   FREE
-  TEMP  
 }
 
 

@@ -36,13 +36,37 @@ export class UserController {
 
   @Post('assign-course')
   async assignCourseToUser(
-    @Body() body: { email: string; courseId: string; subscription: 'FULL_CHARGE' | 'MONTHLY' },
+    @Body()
+    body: {
+      email: string;
+      courseId: string;
+      subscription: 'FULL_CHARGE' | 'MONTHLY';
+    },
   ) {
-    return this.userService.assignCourseToUser(body.email, body.courseId, body.subscription);
+    return this.userService.assignCourseToUser(
+      body.email,
+      body.courseId,
+      body.subscription,
+    );
+  }
+
+  @Post('delete')
+  async deleteUser(@Body() body: { id: string }) {
+    // Object qabul qilish kerak
+    return this.userService.deleteUser(body.id);
   }
 
   @Post('create')
-  async createUser(@Body() body: any) {
+  async createUser(
+    @Body()
+    body: {
+      name?: string;
+      surname?: string;
+      email: string;
+      password: string;
+      phonenumber?: string;
+    },
+  ) {
     return this.userService.createUser(body);
   }
 
@@ -168,7 +192,6 @@ export class UserController {
     const userId = req.user.id;
     return this.userService.markLessonAsSeen(userId, body.lessonId);
   }
-
 
   @Post('get-certificate')
   async getCertificate(@Body() body: { userId: string; courseId: string }) {
