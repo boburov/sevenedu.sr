@@ -75,7 +75,7 @@ export class CoursesService {
           title: true,
           isDemo: true,
           videoUrl: true,
-sentencePuzzles: true,
+          sentencePuzzles: true,
           order: true,
           isVisible: true,
         },
@@ -158,6 +158,7 @@ sentencePuzzles: true,
       });
     });
   }
+  
   async getcategory(id: string) {
     const get = await this.prisma.coursesCategory.findFirst({
       where: { id },

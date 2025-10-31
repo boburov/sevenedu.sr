@@ -1,4 +1,21 @@
-import { Body, Controller, Delete, Get, Param, Patch, Query, Req, UploadedFile, UseGuards, UseInterceptors, HttpException, Post, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Query,
+  Req,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+  HttpException,
+  Post,
+  NotFoundException,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { UserService } from './user.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -7,7 +24,10 @@ import { PrismaService } from 'src/prisma/prisma.service';
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService, private prisma: PrismaService) { }
+  constructor(
+    private readonly userService: UserService,
+    private prisma: PrismaService,
+  ) {}
 
   @Get('all')
   async allUser() {
@@ -32,8 +52,13 @@ export class UserController {
     return { available: true };
   }
 
+  @Get('fix-user')
+  async fixUserData() {
+    return this.userService.fix_user();
+  }
+
   @UseGuards(JwtAuthGuard)
-  @Get("user-progress")
+  @Get('user-progress')
   async getUserProgress(@Req() req) {
     const userId = req.user.id;
     return this.userService.getUserProgress(userId);
@@ -71,7 +96,11 @@ export class UserController {
   async chatWithAI(
     @Body() body: { lessonId: string; message: string; userId: string },
   ): Promise<{ answer: string }> {
-    const answer = await this.userService.chatWithAI(body.userId, body.lessonId, body.message);
+    const answer = await this.userService.chatWithAI(
+      body.userId,
+      body.lessonId,
+      body.message,
+    );
     return { answer };
   }
 
@@ -96,8 +125,6 @@ export class UserController {
     return { count: usage?.count || 0 };
   }
 
-
-
   @Get(':id')
   async getUserById(@Param('id') id: string) {
     return this.userService.getUserById(id);
@@ -111,11 +138,10 @@ export class UserController {
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
   ) {
-
-    return this.userService.updateUser(id, updateUserDto,);
+    return this.userService.updateUser(id, updateUserDto);
   }
 
-  @Post("coins")
+  @Post('coins')
   async addCoins(@Body() body: { userId: string; coins: number }) {
     const { userId, coins } = body;
     if (!userId || !coins) {
@@ -126,21 +152,17 @@ export class UserController {
 
   @UseGuards(JwtAuthGuard)
   @Post('mark-lesson-seen')
-  async markLessonSeen(
-    @Body() body: { lessonId: string },
-    @Req() req
-  ) {
+  async markLessonSeen(@Body() body: { lessonId: string }, @Req() req) {
     const userId = req.user.id;
     return this.userService.markLessonAsSeen(userId, body.lessonId);
   }
-
 
   @Post('assign-course')
   async assignCourseToUser(@Body() body: { email: string; courseId: string }) {
     return this.userService.assignCourse(body.email, body.courseId);
   }
 
-  @Post("get-certificate")
+  @Post('get-certificate')
   async getCertificate(@Body() body: { userId: string; courseId: string }) {
     return this.userService.getCertificate(body.userId, body.courseId);
   }
@@ -158,5 +180,4 @@ export class UserController {
   async deleteProfilePic(@Param('id') id: string) {
     return this.userService.deleteProfilePic(id);
   }
-
 }
