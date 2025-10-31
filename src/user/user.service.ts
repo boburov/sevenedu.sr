@@ -18,7 +18,7 @@ import { format } from 'date-fns';
 export class UserService {
   private openai: OpenAI;
   constructor(
-    private prisma:  PrismaService,
+    private prisma: PrismaService,
     private uploadService: UploadsService,
     private config: ConfigService,
   ) {
@@ -157,6 +157,11 @@ export class UserService {
         notifications: {
           include: {
             notification: true,
+          },
+        },
+        courses: {
+          include: {
+            course: true,
           },
         },
       },
