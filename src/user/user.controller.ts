@@ -34,6 +34,18 @@ export class UserController {
     return this.userService.allUser();
   }
 
+  @Post('assign-course')
+  async assignCourseToUser(
+    @Body() body: { email: string; courseId: string; subscription: 'FULL_CHARGE' | 'MONTHLY' },
+  ) {
+    return this.userService.assignCourseToUser(body.email, body.courseId, body.subscription);
+  }
+
+  @Post('create')
+  async createUser(@Body() body: any) {
+    return this.userService.createUser(body);
+  }
+
   @Get('check')
   async checkEmail(@Query('email') email: string) {
     if (!email) {
@@ -157,10 +169,6 @@ export class UserController {
     return this.userService.markLessonAsSeen(userId, body.lessonId);
   }
 
-  @Post('assign-course')
-  async assignCourseToUser(@Body() body: { email: string; courseId: string }) {
-    return this.userService.assignCourse(body.email, body.courseId);
-  }
 
   @Post('get-certificate')
   async getCertificate(@Body() body: { userId: string; courseId: string }) {

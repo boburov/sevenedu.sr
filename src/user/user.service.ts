@@ -27,6 +27,88 @@ export class UserService {
     });
   }
 
+  async assignCourseToUser(
+    email: string,
+    courseId: string,
+    subscription: 'FULL_CHARGE' | 'MONTHLY',
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Foydalanuvchi topilmadi');
+    }
+
+    const course = await this.prisma.coursesCategory.findUnique({
+      where: { id: courseId },
+    });
+
+    if (!course) {
+      throw new NotFoundException('Kurs topilmadi');
+    }
+
+    const existing = await this.prisma.userCourse.findFirst({
+      where: { userId: user.id, courseId },
+    });
+
+    if (existing) {
+      return { message: 'Bu kurs allaqachon foydalanuvchiga biriktirilgan' };
+    }
+
+    const newCourse = await this.prisma.userCourse.create({
+      data: {
+        userId: user.id,
+        courseId,
+        subscription,
+      },
+    });
+
+    return {
+      message: `Kurs foydalanuvchiga qo‘shildi: ${subscription}`,
+      data: newCourse,
+    };
+  }
+
+  async createUser(data: {
+    name?: string;
+    surname?: string;
+    email: string;
+    password: string;
+    phonenumber?: string;
+  }) {
+    // Email borligini tekshiramiz
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: data.email },
+    });
+    if (existingUser) {
+      throw new HttpException('Bu email allaqachon ishlatilgan', 400);
+    }
+
+    // Parolni hash qilamiz
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+
+    // Foydalanuvchini yaratamiz
+    const newUser = await this.prisma.user.create({
+      data: {
+        name: data.name || '',
+        surname: data.surname || '',
+        email: data.email,
+        isVerified: true, // email tekshiruvi yo‘q, shunchaki true qilamiz
+        password: hashedPassword,
+        phonenumber: data.phonenumber || '',
+        code: '', // email tekshiruvi yo‘q, shunchaki bo‘sh qoldiramiz
+      },
+    });
+
+    // Parolsiz userni qaytaramiz
+    const { password, ...userWithoutPassword } = newUser;
+    return {
+      message: 'Foydalanuvchi yaratildi',
+      user: userWithoutPassword,
+    };
+  }
+
   async fix_user() {
     const usersWithCourses = await this.prisma.user.findMany({
       where: {
