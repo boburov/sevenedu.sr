@@ -14,6 +14,12 @@ enum UserRole {
   CREATOR
 }
 
+enum SubscriptionType {
+  MONTHLY
+  FULL_CHARGE
+  FREE
+}
+
 model User {
   id                   String                  @id @default(uuid())
   name                 String?
@@ -65,11 +71,12 @@ model CoursesCategory {
 }
 
 model UserCourse {
-  id         String   @id @default(uuid())
-  userId     String
-  courseId   String
-  isFinished Boolean  @default(false)
-  joinedAt   DateTime @default(now())
+  id           String           @id @default(uuid())
+  userId       String
+  courseId     String
+  subscription SubscriptionType @default(FREE)
+  isFinished   Boolean          @default(false)
+  joinedAt     DateTime         @default(now())
 
   user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   course CoursesCategory @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -90,21 +97,20 @@ model Lessons {
   quizs             Quizs[]          @relation("Quizs")
   questions         Quessions[]      @relation("Quessions")
   lessonActivity    LessonActivity[]
-  sentencePuzzles   SentencePuzzle[]   @relation("LessonSentencePuzzle") // <<< SHU YERDA
+  sentencePuzzles   SentencePuzzle[] @relation("LessonSentencePuzzle") // <<< SHU YERDA
 
   @@unique([coursesCategoryId, order])
 }
 
 model SentencePuzzle {
-  id       String   @id @default(uuid())
+  id       String  @id @default(uuid())
   sentence String
   answer   String
   lessonId String
-  lesson   Lessons  @relation("LessonSentencePuzzle", fields: [lessonId], references: [id], onDelete: Cascade)
+  lesson   Lessons @relation("LessonSentencePuzzle", fields: [lessonId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 }
-
 
 model LessonActivity {
   id        String   @id @default(uuid())

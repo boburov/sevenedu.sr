@@ -1,4 +1,10 @@
-import { ForbiddenException, HttpException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  HttpException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UploadsService } from 'src/uploads/uploads.service';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -8,18 +14,48 @@ import { ConfigService } from '@nestjs/config';
 import { eachDayOfInterval, subDays } from 'date-fns';
 import { format } from 'date-fns';
 
-
 @Injectable()
 export class UserService {
   private openai: OpenAI;
   constructor(
-    private prisma: PrismaService,
+    private prisma:  PrismaService,
     private uploadService: UploadsService,
     private config: ConfigService,
   ) {
     this.openai = new OpenAI({
-      apiKey: this.config.getOrThrow('OPENAI_API_KEY')
+      apiKey: this.config.getOrThrow('OPENAI_API_KEY'),
     });
+  }
+
+  async fix_user() {
+    const usersWithCourses = await this.prisma.user.findMany({
+      where: {
+        courses: {
+          some: {},
+        },
+      },
+      select: { id: true },
+    });
+
+    if (usersWithCourses.length === 0) {
+      console.log('Hech bir userda kurs yo‘q.');
+      return;
+    }
+
+    const userIds = usersWithCourses.map((u) => u.id);
+
+    const update = await this.prisma.userCourse.updateMany({
+      where: {
+        userId: {
+          in: userIds,
+        },
+      },
+      data: {
+        subscription: 'FULL_CHARGE',
+      },
+    });
+
+    console.log(`✅ ${update.count} ta yozuv yangilandi.`);
   }
 
   async updateUser(id: string, updateUser: UpdateUserDto) {
@@ -35,7 +71,9 @@ export class UserService {
     }
 
     if (email && email !== user.email) {
-      const existingEmail = await this.prisma.user.findFirst({ where: { email } });
+      const existingEmail = await this.prisma.user.findFirst({
+        where: { email },
+      });
       if (existingEmail) {
         throw new HttpException('Bu email allaqachon ishlatilmoqda', 400);
       }
@@ -69,9 +107,8 @@ export class UserService {
       include: {
         showedLesson: {
           include: {
-            lesson: true
-          }
-
+            lesson: true,
+          },
         },
         courses: true,
         notifications: {
@@ -168,18 +205,25 @@ export class UserService {
     });
   }
 
-
   async getLessonStats(userId: string) {
     const totalLessons = await this.prisma.lessons.count();
-    const completedLessons = await this.prisma.lessonActivity.count({ where: { userId } });
+    const completedLessons = await this.prisma.lessonActivity.count({
+      where: { userId },
+    });
     return {
       totalLessons,
       completedLessons,
-      completionRate: Number(((completedLessons / totalLessons) * 100).toFixed(2)),
+      completionRate: Number(
+        ((completedLessons / totalLessons) * 100).toFixed(2),
+      ),
     };
   }
 
-  async chatWithAI(userId: string, lessonId: string, message: string): Promise<string> {
+  async chatWithAI(
+    userId: string,
+    lessonId: string,
+    message: string,
+  ): Promise<string> {
     try {
       const today = new Date();
       const startOfDay = new Date(today.setHours(0, 0, 0, 0));
@@ -202,7 +246,9 @@ export class UserService {
           },
         });
       } else if (usage.count >= 7) {
-        throw new ForbiddenException('Siz bugungi 7 ta kreditdan foydalandingiz.');
+        throw new ForbiddenException(
+          'Siz bugungi 7 ta kreditdan foydalandingiz.',
+        );
       } else {
         await this.prisma.lessonAIUsage.update({
           where: { id: usage.id },
@@ -215,7 +261,8 @@ export class UserService {
         messages: [
           {
             role: 'system',
-            content: 'Siz foydalanuvchiga til o‘rgatadigan ustozsiz. Har savolga aniq, qisqa, o‘zbek tilida javob bering. Dars mavzusidan chiqmay javob bering.',
+            content:
+              'Siz foydalanuvchiga til o‘rgatadigan ustozsiz. Har savolga aniq, qisqa, o‘zbek tilida javob bering. Dars mavzusidan chiqmay javob bering.',
           },
           { role: 'user', content: message },
         ],
@@ -226,13 +273,14 @@ export class UserService {
       console.error('GPT chat xatosi:', error);
 
       if (error instanceof ForbiddenException) {
-        throw error; // limit xatosi foydalanuvchiga kerak
+        throw error;
       }
 
-      throw new InternalServerErrorException('AI javobi olinmadi. Iltimos, keyinroq qayta urinib ko‘ring.');
+      throw new InternalServerErrorException(
+        'AI javobi olinmadi. Iltimos, keyinroq qayta urinib ko‘ring.',
+      );
     }
   }
-
 
   async getUserProgress(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -294,31 +342,33 @@ export class UserService {
       const dateKey = format(day, 'yyyy-MM-dd');
 
       const filtered = lessonActivities.filter(
-        (a) => format(a.watchedAt, 'yyyy-MM-dd') === dateKey
+        (a) => format(a.watchedAt, 'yyyy-MM-dd') === dateKey,
       );
 
       const vocabularyCorrect = filtered.reduce(
         (sum, item) => sum + (item.vocabularyCorrect || 0),
-        0
+        0,
       );
       const vocabularyWrong = filtered.reduce(
         (sum, item) => sum + (item.vocabularyWrong || 0),
-        0
+        0,
       );
 
       const quizCorrect = filtered.reduce(
         (sum, item) => sum + (item.quizCorrect || 0),
-        0
+        0,
       );
       const quizWrong = filtered.reduce(
         (sum, item) => sum + (item.quizWrong || 0),
-        0
+        0,
       );
 
-      const testTotal = filtered.filter((item) => item.score !== null && item.score !== undefined).length;
+      const testTotal = filtered.filter(
+        (item) => item.score !== null && item.score !== undefined,
+      ).length;
       const testCorrect = filtered.reduce(
         (sum, item) => sum + (item.score || 0),
-        0
+        0,
       );
 
       return {
@@ -429,8 +479,7 @@ export class UserService {
     const updateCourse = await this.prisma.userCourse.update({
       where: { id: courseId },
       data: { isFinished: true },
-    })
-
+    });
   }
 
   async markLessonAsSeen(userId: string, lessonId: string) {
@@ -456,13 +505,12 @@ export class UserService {
     return { message: 'Dars ko‘rilgan deb belgilandi' };
   }
 
-
   async addCoins(userId: string, coins: number) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { coins: true },
     });
-    console.log("💰 Tanga so‘rovi:", userId, coins);
+    console.log('💰 Tanga so‘rovi:', userId, coins);
 
     if (!user) {
       throw new NotFoundException('Foydalanuvchi topilmadi');
