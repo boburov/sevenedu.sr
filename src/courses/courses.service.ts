@@ -75,7 +75,7 @@ export class CoursesService {
           title: true,
           isDemo: true,
           videoUrl: true,
-          SentencePuzzle: true,
+sentencePuzzles: true,
           order: true,
           isVisible: true,
         },
