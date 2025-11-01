@@ -234,6 +234,7 @@ export class UserService {
     name?: string;
     surname?: string;
     email: string;
+    role?: 'USER' | 'ADMIN';
     password: string;
     phonenumber?: string;
   }) {
@@ -256,6 +257,7 @@ export class UserService {
         email: data.email,
         isVerified: true, // email tekshiruvi yo‘q, shunchaki true qilamiz
         password: hashedPassword,
+        role: data.role || 'USER',
         phonenumber: data.phonenumber || '',
         code: '', // email tekshiruvi yo‘q, shunchaki bo‘sh qoldiramiz
       },
