@@ -3,9 +3,9 @@ import { LoginUserDto } from './dto/login-user.dto';
 import { AuthService } from './auth.service';
 import { VerifyCodeDto } from './dto/verify-code';
 import { CreateUserDto } from './dto/create-auth.dto';
-import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
+import { JwtAuthGuard } from '../guard/jwt-auth.guard';
 import { AuthGuard } from '@nestjs/passport';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { ForgotPasswordDto } from './dto/forgot-psw.dto';
 import { JwtService } from '@nestjs/jwt';
 

@@ -6,8 +6,6 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { UploadsService } from 'src/uploads/uploads.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 import OpenAI from 'openai';
@@ -15,6 +13,8 @@ import { ConfigService } from '@nestjs/config';
 import { eachDayOfInterval, subDays } from 'date-fns';
 import { format } from 'date-fns';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { PrismaService } from '../prisma/prisma.service';
+import { UploadsService } from '../uploads/uploads.service';
 
 @Injectable()
 export class UserService {

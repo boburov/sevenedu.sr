@@ -4,14 +4,15 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateCategoryCourseDto } from './dto/create-course-category.dto';
-import { UploadsService } from 'src/uploads/uploads.service';
+import { UploadsService } from '../uploads/uploads.service';
 import { CreateLessonDto } from './dto/create-course.dot';
 import * as path from 'path';
 import * as fs from 'fs';
 import { UpdateCategoryDto } from './dto/update-course.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
+import { Dictonary } from '../../generated/prisma';
 
 @Injectable()
 export class CoursesService {
@@ -22,7 +23,7 @@ export class CoursesService {
   ) {}
 
   async generateVocabularyQuiz(lessonId: string) {
-    const words = await this.prisma.dictonary.findMany({
+    const words: Dictonary[] = await this.prisma.dictonary.findMany({
       where: { lessonsId: lessonId },
     });
 

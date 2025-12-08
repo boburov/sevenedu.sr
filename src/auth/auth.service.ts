@@ -1,12 +1,12 @@
 import { BadRequestException, HttpException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-auth.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { MailService } from 'src/mail/mail.service';
+import { MailService } from '../mail/mail.service';
 import { VerifyCodeDto } from './dto/verify-code';
 import { LoginUserDto } from './dto/login-user.dto';
-import { UploadsService } from 'src/uploads/uploads.service';
+import { UploadsService } from '../uploads/uploads.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
