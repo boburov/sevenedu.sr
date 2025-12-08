@@ -347,21 +347,7 @@ export class UserService {
   }
 
   async allUser() {
-    return await this.prisma.user.findMany({
-      include: {
-        showedLesson: {
-          include: {
-            lesson: true,
-          },
-        },
-        courses: true,
-        notifications: {
-          include: {
-            notification: true,
-          },
-        },
-      },
-    });
+    return await this.prisma.user.findMany({});
   }
 
   async assignCourse(email: string, courseId: string) {

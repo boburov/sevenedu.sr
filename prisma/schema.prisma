@@ -92,7 +92,7 @@ model Lessons {
   videoUrl          String
   coursesCategoryId String
   coursesCategory   CoursesCategory  @relation("CategoryLessons", fields: [coursesCategoryId], references: [id], onDelete: Cascade)
-  order             Int              @default(0)
+  order             Int              @default(autoincrement())
   dictonary         Dictonary[]      @relation("Dictonary")
   isVisible         Boolean          @default(true)
   quizs             Quizs[]          @relation("Quizs")
