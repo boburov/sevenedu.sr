@@ -23,11 +23,11 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateLessonDto } from './dto/create-course.dot';
 import { UpdateCategoryDto } from './dto/update-course.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
-import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { SaveVocabularyResultDto } from './dto/save-vocabulary-result.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { RelocateLessonsDto } from './dto/relocate.dto';
+import { PrismaService } from '../prisma/prisma.service';
+import { JwtAuthGuard } from '../guard/jwt-auth.guard';
 
 @Controller('courses')
 export class CoursesController {
