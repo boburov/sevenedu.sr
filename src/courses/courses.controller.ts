@@ -15,7 +15,7 @@ import {
   Res,
   UploadedFile,
   UseGuards,
-  UseInterceptors
+  UseInterceptors,
 } from '@nestjs/common';
 import { CoursesService } from './courses.service';
 import { CreateCategoryCourseDto } from './dto/create-course-category.dto';
@@ -31,28 +31,37 @@ import { JwtAuthGuard } from '../guard/jwt-auth.guard';
 
 @Controller('courses')
 export class CoursesController {
-  constructor(private courseService: CoursesService, private prisma: PrismaService) { }
+  constructor(
+    private courseService: CoursesService,
+    private prisma: PrismaService,
+  ) {}
 
   @Get('all')
   async all() {
-    return this.courseService.getAll()
+    return this.courseService.getAll();
   }
-
 
   @Patch('fix-video-urls')
   async fixVideoUrls() {
     return this.courseService.fixAllVideoUrls();
   }
 
+  @Delete('delete/all/invisible-lessons') // yoki /cleanup/invisible
+  @HttpCode(HttpStatus.OK) // agar 204 istamasang
+  async deleteAllInvisibleLessons() {
+    return this.courseService.deleteAllInvisibleLessons();
+  }
 
   @Put(':categoryId/reorder-lessons')
   async reorderLessons(
     @Param('categoryId') categoryId: string,
-    @Body() reorderData: { lessonId: string; newIndex: number } | Array<{ lessonId: string; newIndex: number }>,
+    @Body()
+    reorderData:
+      | { lessonId: string; newIndex: number }
+      | Array<{ lessonId: string; newIndex: number }>,
   ) {
     return this.courseService.reorderLessons(categoryId, reorderData);
   }
-
 
   @Get(':lessonId/vocabulary-quiz')
   async getVocabularyQuiz(@Param('lessonId') lessonId: string) {
@@ -61,16 +70,13 @@ export class CoursesController {
 
   @Get('category/:id')
   async getCategory(@Param('id') id: string) {
-    return this.courseService.getcategory(id)
+    return this.courseService.getcategory(id);
   }
 
   @Get('lessons/:id')
-  async getLessonById(
-    @Param('id') id: string,
-  ) {
+  async getLessonById(@Param('id') id: string) {
     return this.courseService.getLessonById(id);
   }
-
 
   @Post(':lessonId/vocabulary-result')
   @UseGuards(JwtAuthGuard)
@@ -95,21 +101,28 @@ export class CoursesController {
       create: {
         userId: userId,
         lessonsId: lessonId,
-        courseId: (await this.prisma.lessons.findUnique({ where: { id: lessonId } }))?.coursesCategoryId || "",
+        courseId:
+          (await this.prisma.lessons.findUnique({ where: { id: lessonId } }))
+            ?.coursesCategoryId || '',
         watchedAt: new Date(),
         vocabularyCorrect: body.correct,
         vocabularyWrong: body.wrong,
       },
     });
 
-    return this.courseService.saveVocabularyResult(lessonId, userId, body.correct, body.wrong);
+    return this.courseService.saveVocabularyResult(
+      lessonId,
+      userId,
+      body.correct,
+      body.wrong,
+    );
   }
 
   @Post('create')
   @UseInterceptors(FileInterceptor('file'))
   createCategory(
     @Body() dto: CreateCategoryCourseDto,
-    @UploadedFile() file: Express.Multer.File
+    @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file.mimetype.startsWith('image/')) {
       throw new BadRequestException('Faqat rasm fayl yuklash mumkin');
@@ -146,11 +159,9 @@ export class CoursesController {
     @UploadedFile() file: Express.Multer.File,
     @Body() body: any,
   ) {
-
     if (typeof body.isDemo === 'string') {
       body.isDemo = body.isDemo === 'true';
     }
-
 
     const dto: UpdateLessonDto = {
       title: body.title,
@@ -161,16 +172,16 @@ export class CoursesController {
     return this.courseService.updateLesson(id, dto, file);
   }
 
-  @Patch("lesson/:id")
+  @Patch('lesson/:id')
   async deleteLEsson(@Param('id') id: string) {
-    return this.courseService.deleteLesson(id)
+    return this.courseService.deleteLesson(id);
   }
 
   @Delete(':id')
   async deleteCategory(@Param('id') id: string, @Res() res: Response) {
     try {
       await this.courseService.removeCategory(id);
-      return { message: 'Kategoriya va rasm o‘chirildi' }
+      return { message: 'Kategoriya va rasm o‘chirildi' };
     } catch (err) {
       throw new HttpException(err.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }

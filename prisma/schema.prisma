@@ -20,7 +20,6 @@ enum SubscriptionType {
   FREE
 }
 
-
 model User {
   id                   String                  @id @default(uuid())
   name                 String?
@@ -98,7 +97,7 @@ model Lessons {
   quizs             Quizs[]          @relation("Quizs")
   questions         Quessions[]      @relation("Quessions")
   lessonActivity    LessonActivity[]
-  sentencePuzzles   SentencePuzzle[] @relation("LessonSentencePuzzle") // <<< SHU YERDA
+  sentencePuzzles   SentencePuzzle[] @relation("LessonSentencePuzzle")
 
   @@unique([coursesCategoryId, order])
 }

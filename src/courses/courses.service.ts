@@ -429,10 +429,22 @@ export class CoursesService {
 
     return this.prisma.lessons.update({
       where: { id },
-      data: { isVisible: false },
+      data: { isVisible: false, order: NaN },
     });
   }
 
+  async deleteAllInvisibleLessons() {
+    const { count } = await this.prisma.lessons.deleteMany({
+      where: {
+        isVisible: false,
+      },
+    });
+
+    return {
+      msg: `${count} ta ko'rinmas dars butunlay o'chirildi! 🗑️`,
+      deletedCount: count,
+    };
+  }
   async removeCategory(id: string) {
     const category = await this.prisma.coursesCategory.findFirst({
       where: { id },
