@@ -33,7 +33,7 @@ export class UploadsService {
 
     // ✅ To'g'ri stream yaratish
     let fileStream: Readable;
-    
+
     if (file.stream && typeof file.stream === 'object' && 'on' in file.stream) {
       // Agar file.stream Node.js Readable stream bo'lsa
       fileStream = file.stream as Readable;
@@ -62,7 +62,7 @@ export class UploadsService {
 
     await upload.done();
 
-    return `https://${this.bucket}.s3.${this.region}.amazonaws.com/${filename}`;
+    return `https://s3.${this.region}.amazonaws.com/${this.bucket}/${filename}`;
   }
 
   async deleteFile(key: string): Promise<boolean> {
@@ -75,7 +75,7 @@ export class UploadsService {
       await this.s3.send(deleteCommand);
       return true;
     } catch (error) {
-      console.error('S3 faylni o\'chirishda xatolik:', error.message);
+      console.error("S3 faylni o'chirishda xatolik:", error.message);
       return false;
     }
   }

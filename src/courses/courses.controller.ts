@@ -46,8 +46,8 @@ export class CoursesController {
     return this.courseService.fixAllVideoUrls();
   }
 
-  @Delete('delete/all/invisible-lessons') // yoki /cleanup/invisible
-  @HttpCode(HttpStatus.OK) // agar 204 istamasang
+  @Delete('delete/all/invisible-lessons')
+  @HttpCode(HttpStatus.OK)
   async deleteAllInvisibleLessons() {
     return this.courseService.deleteAllInvisibleLessons();
   }
