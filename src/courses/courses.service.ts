@@ -13,6 +13,7 @@ import * as fs from 'fs';
 import { UpdateCategoryDto } from './dto/update-course.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
 import { Dictonary } from '../../generated/prisma';
+import { UpdateLessonsBatchDto } from './dto/update.dto';
 
 @Injectable()
 export class CoursesService {
@@ -20,7 +21,7 @@ export class CoursesService {
     private prisma: PrismaService,
     private uploadsService: UploadsService,
     private uploadService: UploadsService,
-  ) {}
+  ) { }
 
   async generateVocabularyQuiz(lessonId: string) {
     const words: Dictonary[] = await this.prisma.dictonary.findMany({
@@ -281,7 +282,7 @@ export class CoursesService {
         },
       },
     });
-
+x
     const updatedLessons: {
       lessonId: string;
       oldUrl: string;
@@ -445,6 +446,75 @@ export class CoursesService {
       deletedCount: count,
     };
   }
+
+  async updateLessonsBatch(dto: UpdateLessonsBatchDto) {
+    if (!dto.updates?.length) {
+      throw new BadRequestException('updates bo‘sh bo‘lishi mumkin emas');
+    }
+
+    // duplicate id check
+    const ids = dto.updates.map((u) => u.id);
+    const unique = new Set(ids);
+    if (unique.size !== ids.length) {
+      throw new BadRequestException('updates ichida takrorlangan id bor');
+    }
+
+    // mavjudligini tekshir
+    const existing = await this.prisma.lessons.findMany({
+      where: { id: { in: ids } },
+      select: { id: true },
+    });
+
+    if (existing.length !== ids.length) {
+      const existingIds = new Set(existing.map((e) => e.id));
+      const missing = ids.filter((id) => !existingIds.has(id));
+      throw new NotFoundException(`Lessons topilmadi: ${missing.join(', ')}`);
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const results = [];
+
+      for (const item of dto.updates) {
+        // faqat kelgan fieldlarni update qilamiz
+        const data: any = {};
+        if (typeof item.title !== 'undefined') data.title = item.title;
+        if (typeof item.isDemo !== 'undefined') data.isDemo = item.isDemo;
+        if (typeof item.isVisible !== 'undefined') data.isVisible = item.isVisible;
+        if (typeof item.videoUrl !== 'undefined') data.videoUrl = item.videoUrl;
+        if (typeof item.order !== 'undefined') data.order = item.order;
+
+        if (Object.keys(data).length === 0) {
+          // bu item umuman update bermagan
+          throw new BadRequestException(
+            `Lesson ${item.id} uchun update field yo‘q`,
+          );
+        }
+
+        const row = await tx.lessons.update({
+          where: { id: item.id },
+          data,
+          select: {
+            id: true,
+            title: true,
+            isDemo: true,
+            isVisible: true,
+            videoUrl: true,
+            order: true,
+          },
+        });
+
+        // results.push(row);
+      }
+
+      return results;
+    });
+
+    return {
+      updatedCount: updated.length,
+      lessons: updated,
+    };
+  }
+
   async removeCategory(id: string) {
     const category = await this.prisma.coursesCategory.findFirst({
       where: { id },

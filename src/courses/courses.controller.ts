@@ -28,13 +28,14 @@ import { ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { RelocateLessonsDto } from './dto/relocate.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../guard/jwt-auth.guard';
+import { UpdateLessonsBatchDto } from './dto/update.dto';
 
 @Controller('courses')
 export class CoursesController {
   constructor(
     private courseService: CoursesService,
     private prisma: PrismaService,
-  ) {}
+  ) { }
 
   @Get('all')
   async all() {
@@ -175,6 +176,11 @@ export class CoursesController {
   @Patch('lesson/:id')
   async deleteLEsson(@Param('id') id: string) {
     return this.courseService.deleteLesson(id);
+  }
+
+  @Patch('lessons/batch')
+  async updateLessonsBatch(@Body() body: UpdateLessonsBatchDto) {
+    return this.courseService.updateLessonsBatch(body);
   }
 
   @Delete(':id')
