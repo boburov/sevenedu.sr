@@ -1,7 +1,7 @@
 import {
   BadRequestException,
-  Body,
   Controller,
+  Body,
   Delete,
   Get,
   HttpCode,
@@ -24,61 +24,50 @@ import { CreateLessonDto } from './dto/create-course.dot';
 import { UpdateCategoryDto } from './dto/update-course.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
 import { SaveVocabularyResultDto } from './dto/save-vocabulary-result.dto';
-import { ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
-import { RelocateLessonsDto } from './dto/relocate.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../guard/jwt-auth.guard';
 import { UpdateLessonsBatchDto } from './dto/update.dto';
+import { Category } from './application/create.category.usecase';
+import { RemoveCategory } from './application/remove.category.usecase';
+import { UpdateCategory } from './application/update-category.usecase';
+import { UpdateLessonsBatch } from './application/update-lessons-batch.usecase';
+import { UpdateLessonUsecase } from './application/update.lesson.usecase';
+import { ReorderService } from './scripts/fix-lesson-orders';
 
 @Controller('courses')
 export class CoursesController {
   constructor(
     private courseService: CoursesService,
     private prisma: PrismaService,
+    private category: Category,
+    private removeCategory: RemoveCategory,
+    private updateCategory: UpdateCategory,
+    private updateLessonBatch: UpdateLessonsBatch,
+    private updateLessonUsecase: UpdateLessonUsecase,
+    private reorder: ReorderService
   ) { }
 
+  // GET All Courses
   @Get('all')
   async all() {
     return this.courseService.getAll();
   }
 
-  @Patch('fix-video-urls')
-  async fixVideoUrls() {
-    return this.courseService.fixAllVideoUrls();
-  }
-
+  // DELETE all invinsible lessons
   @Delete('delete/all/invisible-lessons')
   @HttpCode(HttpStatus.OK)
   async deleteAllInvisibleLessons() {
     return this.courseService.deleteAllInvisibleLessons();
   }
 
-  @Put(':categoryId/reorder-lessons')
-  async reorderLessons(
-    @Param('categoryId') categoryId: string,
-    @Body()
-    reorderData:
-      | { lessonId: string; newIndex: number }
-      | Array<{ lessonId: string; newIndex: number }>,
-  ) {
-    return this.courseService.reorderLessons(categoryId, reorderData);
-  }
-
+  // Vocabulary Section
+  // Get Vocabulary By Lesson ID
   @Get(':lessonId/vocabulary-quiz')
   async getVocabularyQuiz(@Param('lessonId') lessonId: string) {
     return this.courseService.generateVocabularyQuiz(lessonId);
   }
 
-  @Get('category/:id')
-  async getCategory(@Param('id') id: string) {
-    return this.courseService.getcategory(id);
-  }
-
-  @Get('lessons/:id')
-  async getLessonById(@Param('id') id: string) {
-    return this.courseService.getLessonById(id);
-  }
-
+  // POST Vocabulary from getting user
   @Post(':lessonId/vocabulary-result')
   @UseGuards(JwtAuthGuard)
   async saveVocabularyResult(
@@ -119,6 +108,8 @@ export class CoursesController {
     );
   }
 
+  // Category Section
+  // this is a create category section
   @Post('create')
   @UseInterceptors(FileInterceptor('file'))
   createCategory(
@@ -129,9 +120,40 @@ export class CoursesController {
       throw new BadRequestException('Faqat rasm fayl yuklash mumkin');
     }
 
-    return this.courseService.createCategory(dto, file);
+    return this.category.create(dto, file);
   }
 
+  // get category by ID
+  @Get('category/:id')
+  async getCategory(@Param('id') id: string) {
+    return this.category.getcategory(id);
+  }
+
+  // delete category
+  @Delete(':id')
+  async deleteCategory(@Param('id') id: string, @Res() res: Response) {
+    try {
+      await this.removeCategory.remove(id);
+      return { message: 'Kategoriya va rasm o‘chirildi' };
+    } catch (err) {
+      throw new HttpException(err.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  // edit category
+  @Patch('category/:id')
+  @UseInterceptors(FileInterceptor('file'))
+  async update(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: UpdateCategoryDto,
+  ) {
+    return this.updateCategory.update(id, body, file);
+  }
+  // end of category endpoint
+
+  // Lessons Section
+  // create lesson section 
   @Post(':id/lesson')
   @UseInterceptors(FileInterceptor('video'))
   async createNewLesson(
@@ -143,16 +165,13 @@ export class CoursesController {
     return this.courseService.createCourse(body, id, file);
   }
 
-  @Patch('category/:id')
-  @UseInterceptors(FileInterceptor('file'))
-  async update(
-    @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File,
-    @Body() body: UpdateCategoryDto,
-  ) {
-    return this.courseService.updateCategory(id, body, file);
+  // Get Lessons By ID
+  @Get('lessons/:id')
+  async getLessonById(@Param('id') id: string) {
+    return this.category.getLessonById(id);
   }
 
+  // edit lessons
   @Patch('lessons/:id')
   @UseInterceptors(FileInterceptor('video'))
   async updateLesson(
@@ -170,26 +189,31 @@ export class CoursesController {
       isDemo: body.isDemo,
     };
 
-    return this.courseService.updateLesson(id, dto, file);
+    return this.updateLessonUsecase.update(id, dto, file);
   }
 
+  // delete lesson
   @Patch('lesson/:id')
   async deleteLEsson(@Param('id') id: string) {
     return this.courseService.deleteLesson(id);
   }
 
+  // esimdan chiqib qoldi nima ekanligi
   @Patch('lessons/batch')
   async updateLessonsBatch(@Body() body: UpdateLessonsBatchDto) {
-    return this.courseService.updateLessonsBatch(body);
+    return this.updateLessonBatch.update(body);
   }
 
-  @Delete(':id')
-  async deleteCategory(@Param('id') id: string, @Res() res: Response) {
-    try {
-      await this.courseService.removeCategory(id);
-      return { message: 'Kategoriya va rasm o‘chirildi' };
-    } catch (err) {
-      throw new HttpException(err.message, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+  //  reorder lessons
+  @Put(':categoryId/reorder-lessons')
+  async reorderLessons(
+    @Param('categoryId') categoryId: string,
+    @Body()
+    reorderData:
+      | { lessonId: string; newIndex: number }
+      | Array<{ lessonId: string; newIndex: number }>,
+  ) {
+    return this.reorder.lessons(categoryId, reorderData);
   }
+
 }
