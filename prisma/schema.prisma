@@ -25,6 +25,7 @@ model User {
   name                 String?
   surname              String?
   phonenumber          String?
+  username             String                  @unique  
   role                 UserRole                @default(USER)
   password             String
   email                String                  @unique
