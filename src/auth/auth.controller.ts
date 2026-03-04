@@ -95,7 +95,7 @@ export class AuthController {
   async googleCallback(@Req() req: any, @Res() res: Response) {
     const { token } = await this.authService.googleLogin(req.user);
 
-    const frontendOrigin = 'http://sevenedu.org';
+    const frontendOrigin = 'https://sevenedu.org';
 
     return res.redirect(
       `${frontendOrigin}/auth/popup?token=${encodeURIComponent(token)}`
