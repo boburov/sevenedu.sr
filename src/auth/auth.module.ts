@@ -9,6 +9,7 @@ import { UploadsModule } from '../uploads/uploads.module';
 import { ConfigModule } from '@nestjs/config';
 import { JwtStrategy } from '../guard/jwt.strategy';
 import { UserModule } from '../user/user.module';
+import { GoogleStrategy } from './strategies/google.strategy';
 
 @Module({
   imports: [
@@ -19,6 +20,6 @@ import { UserModule } from '../user/user.module';
     })
     , PrismaModule, MailModule, UploadsModule, UserModule],
   controllers: [AuthController],
-  providers: [AuthService, UserService, JwtStrategy]
+  providers: [AuthService, UserService, JwtStrategy, GoogleStrategy]
 })
 export class AuthModule { }

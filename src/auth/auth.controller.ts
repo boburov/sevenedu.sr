@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Req, UseGuards, Post, HttpException, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Req, UseGuards, Post, HttpException, UnauthorizedException, Res } from '@nestjs/common';
 import { LoginUserDto } from './dto/login-user.dto';
 import { AuthService } from './auth.service';
 import { VerifyCodeDto } from './dto/verify-code';
@@ -8,6 +8,8 @@ import { AuthGuard } from '@nestjs/passport';
 import { PrismaService } from '../prisma/prisma.service';
 import { ForgotPasswordDto } from './dto/forgot-psw.dto';
 import { JwtService } from '@nestjs/jwt';
+import { GoogleAuthGuard } from '../guard/google-auth.guard';
+import { Response } from "express";
 
 @Controller('auth')
 export class AuthController {
@@ -79,5 +81,25 @@ export class AuthController {
   @Post('forgot-password')
   async forgotPassword(@Body() body: ForgotPasswordDto) {
     return await this.authService.forgotPassword(body.email);
+  }
+
+  @Get('google')
+  @UseGuards(GoogleAuthGuard)
+  async googleLogin() {
+    // redirects to google
+  }
+
+
+  @Get('google/callback')
+  @UseGuards(GoogleAuthGuard)
+  async googleCallback(@Req() req: any, @Res() res: Response) {
+    const { token } = await this.authService.googleLogin(req.user);
+
+    const frontendOrigin =
+      process.env.FRONTEND_ORIGIN || 'http://localhost:3000';
+
+    return res.redirect(
+      `${frontendOrigin}/auth/popup?token=${encodeURIComponent(token)}`
+    );
   }
 }

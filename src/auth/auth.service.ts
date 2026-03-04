@@ -159,7 +159,8 @@ export class AuthService {
       throw new UnauthorizedException("Bunday foydalanuvchi topilmadi");
     }
 
-    const isPasswordMatch = await bcrypt.compare(password, user.password);
+    const isPasswordMatch = await bcrypt.compare(password, String(user.password));
+
     if (!isPasswordMatch) {
       throw new UnauthorizedException("Parol noto‘g‘ri");
     }
@@ -183,6 +184,47 @@ export class AuthService {
     };
   }
 
-  
+  async googleLogin(googleUser: any) {
+    const email = googleUser.email;
+    const googleId = googleUser.providerId;
+
+    if (!email) throw new Error('Google account has no email');
+
+    // 1) try find existing by email (your old users)
+    let user = await this.prisma.user.findUnique({ where: { email } });
+
+    if (user) {
+      // 2) link google to existing account (optional but recommended)
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          provider: 'google',
+          providerId: googleId,
+          isVerified: true,
+          profilePic: googleUser.photo ?? user.profilePic,
+          lastLoginAt: new Date(),
+        },
+      });
+    } else {
+      // 3) create new oauth user
+      user = await this.prisma.user.create({
+        data: {
+          email,
+          username: `u_${googleId}`,      // must be unique
+          name: googleUser.firstName,
+          surname: googleUser.lastName,
+          profilePic: googleUser.photo ?? '',
+          isVerified: true,
+          provider: 'google',
+          providerId: googleId,
+          lastLoginAt: new Date(),
+          // password/code can be null if you made them optional
+        },
+      });
+    }
+
+    const token = await this.jwt.signAsync({ sub: user.id, email: user.email });
+    return { token, user };
+  }
 
 }

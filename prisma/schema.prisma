@@ -21,22 +21,33 @@ enum SubscriptionType {
 }
 
 model User {
-  id                   String                  @id @default(uuid())
-  name                 String?
-  surname              String?
-  phonenumber          String?
-  username             String                  @unique  
-  role                 UserRole                @default(USER)
-  password             String
-  email                String                  @unique
-  profilePic           String                  @default("")
-  coins                Int                     @default(0)
-  isVerified           Boolean                 @default(false)
-  code                 String
-  codeExpiresAt        DateTime?
-  createdAt            DateTime                @default(now())
-  updatedAt            DateTime                @updatedAt
-  lastLoginAt          DateTime?
+  id          String  @id @default(uuid())
+  name        String?
+  surname     String?
+  phonenumber String?
+
+  username String? @unique
+
+  role UserRole @default(USER)
+
+  // ✅ make optional for OAuth users
+  password      String?
+  code          String?
+  codeExpiresAt DateTime?
+
+  email      String  @unique
+  profilePic String  @default("")
+  coins      Int     @default(0)
+  isVerified Boolean @default(false)
+
+  // ✅ OAuth fields
+  provider   String? // "google"
+  providerId String? @unique
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+
   courses              UserCourse[]
   showedLesson         LessonActivity[]
   notifications        NotificationRecipient[]
