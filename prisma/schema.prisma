@@ -30,7 +30,6 @@ model User {
 
   role UserRole @default(USER)
 
-  // ✅ make optional for OAuth users
   password      String?
   code          String?
   codeExpiresAt DateTime?
@@ -40,8 +39,7 @@ model User {
   coins      Int     @default(0)
   isVerified Boolean @default(false)
 
-  // ✅ OAuth fields
-  provider   String? // "google"
+  provider   String?
   providerId String? @unique
 
   createdAt   DateTime  @default(now())
