@@ -92,8 +92,10 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
   async googleCallback(@Req() req: any, @Res() res: Response) {
-    const { token } = await this.authService.googleLogin(req.user);
 
+    console.log("GOOGLE CALLBACK USER:", req.user);
+
+    const { token } = await this.authService.googleLogin(req.user);
     const frontendOrigin = 'https://sevenedu.org';
 
     return res.redirect(
