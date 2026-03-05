@@ -83,23 +83,25 @@ export class AuthController {
     return await this.authService.forgotPassword(body.email);
   }
 
+
   @Get('google')
   @UseGuards(GoogleAuthGuard)
   async googleLogin() {
-    // redirects to google
+    // Passport redirects to Google
   }
 
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
   async googleCallback(@Req() req: any, @Res() res: Response) {
+    try {
+      const { token } = await this.authService.googleLogin(req.user);
 
-    console.log("GOOGLE CALLBACK USER:", req.user);
-
-    const { token } = await this.authService.googleLogin(req.user);
-    const frontendOrigin = 'https://sevenedu.org';
-
-    return res.redirect(
-      `${frontendOrigin}/auth/popup?token=${encodeURIComponent(token)}`
-    );
+      const frontendOrigin = process.env.FRONTEND_ORIGIN || 'https://sevenedu.org';
+      return res.redirect(`${frontendOrigin}/auth/popup?token=${encodeURIComponent(token)}`);
+    } catch (e) {
+      // if something fails, send to a clean error page in frontend (optional)
+      const frontendOrigin = process.env.FRONTEND_ORIGIN || 'https://sevenedu.org';
+      return res.redirect(`${frontendOrigin}/auth/popup?error=oauth_failed`);
+    }
   }
 }

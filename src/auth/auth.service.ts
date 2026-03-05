@@ -1,4 +1,4 @@
-import { BadRequestException, HttpException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, HttpException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-auth.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
@@ -17,6 +17,10 @@ export class AuthService {
     private uploadService: UploadsService,
     private prisma: PrismaService,
   ) { }
+
+  private makeUsername(googleId: string) {
+    return `u_${googleId}`.slice(0, 30);
+  }
 
   generateAlphanumericId(length = 6): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -183,57 +187,61 @@ export class AuthService {
       },
     };
   }
-
-  async googleLogin(profile: any) {
-    const email =
-      profile?.emails?.[0]?.value ||
-      profile?.email;
-
-    const googleId =
-      profile?.id ||
-      profile?.providerId;
-
-    const firstName =
-      profile?.name?.givenName ||
-      profile?.firstName ||
-      "";
-
-    const lastName =
-      profile?.name?.familyName ||
-      profile?.lastName ||
-      "";
-
-    const photo =
-      profile?.photos?.[0]?.value ||
-      profile?.photo ||
-      "";
+  
+  async googleLogin(googleUser: any) {
+    const email = googleUser?.email;
+    const googleId = googleUser?.id;
 
     if (!email) throw new BadRequestException("Google account has no email");
+    if (!googleId) throw new BadRequestException("Google account has no id");
 
-    let user = await this.prisma.user.findUnique({ where: { email } });
+    // 1) If someone already has this googleId, we will sign them in
+    const existingByProvider = await this.prisma.user.findUnique({
+      where: { providerId: googleId },
+    });
+
+    // 2) If user exists by email, link google to that account (your 1k users case)
+    const existingByEmail = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    // If googleId is already linked to a different email, STOP (prevents hijacking)
+    if (existingByProvider && existingByEmail && existingByProvider.id !== existingByEmail.id) {
+      throw new ConflictException("This Google account is already linked to another user");
+    }
+
+    let user = existingByEmail || existingByProvider;
 
     if (user) {
+      // link/update
       user = await this.prisma.user.update({
         where: { id: user.id },
         data: {
           provider: "google",
           providerId: googleId,
           isVerified: true,
-          profilePic: photo || user.profilePic,
+          profilePic: googleUser.photo || user.profilePic,
+          name: user.name || googleUser.firstName,
+          surname: user.surname || googleUser.lastName,
           lastLoginAt: new Date(),
         },
       });
     } else {
-      // IMPORTANT: username must be unique and short enough
-      const safeUsername = `u_${googleId}`.slice(0, 30);
+      // create new oauth user
+      const baseUsername = this.makeUsername(googleId);
+
+      // ensure username uniqueness (because username is @unique)
+      let username = baseUsername;
+      const exists = await this.prisma.user.findUnique({ where: { username } });
+      if (exists) username = `${baseUsername}_${Date.now().toString().slice(-5)}`.slice(0, 30);
 
       user = await this.prisma.user.create({
         data: {
           email,
-          username: safeUsername,
-          name: firstName,
-          surname: lastName,
-          profilePic: photo,
+          username,
+          name: googleUser.firstName || "",
+          surname: googleUser.lastName || "",
+          profilePic: googleUser.photo || "",
           isVerified: true,
           provider: "google",
           providerId: googleId,
@@ -245,5 +253,4 @@ export class AuthService {
     const token = await this.jwt.signAsync({ sub: user.id, email: user.email });
     return { token, user };
   }
-
 }
