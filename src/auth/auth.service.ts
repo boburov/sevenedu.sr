@@ -184,41 +184,60 @@ export class AuthService {
     };
   }
 
-  async googleLogin(googleUser: any) {
-    const email = googleUser.email;
-    const googleId = googleUser.providerId;
+  async googleLogin(profile: any) {
+    const email =
+      profile?.emails?.[0]?.value ||
+      profile?.email;
 
-    if (!email) throw new Error('Google account has no email');
+    const googleId =
+      profile?.id ||
+      profile?.providerId;
 
-    // 1) try find existing by email (your old users)
+    const firstName =
+      profile?.name?.givenName ||
+      profile?.firstName ||
+      "";
+
+    const lastName =
+      profile?.name?.familyName ||
+      profile?.lastName ||
+      "";
+
+    const photo =
+      profile?.photos?.[0]?.value ||
+      profile?.photo ||
+      "";
+
+    if (!email) throw new BadRequestException("Google account has no email");
+
     let user = await this.prisma.user.findUnique({ where: { email } });
 
     if (user) {
-      // 2) link google to existing account (optional but recommended)
       user = await this.prisma.user.update({
         where: { id: user.id },
         data: {
-          provider: 'google',
+          provider: "google",
           providerId: googleId,
           isVerified: true,
-          profilePic: googleUser.photo ?? user.profilePic,
+          profilePic: photo || user.profilePic,
           lastLoginAt: new Date(),
         },
       });
     } else {
-      // 3) create new oauth user
+      // IMPORTANT: username must be unique and short enough
+      const safeUsername = `u_${googleId}`.slice(0, 30);
+
       user = await this.prisma.user.create({
         data: {
           email,
-          username: `u_${googleId}`,      // must be unique
-          name: googleUser.firstName,
-          surname: googleUser.lastName,
-          profilePic: googleUser.photo ?? '',
+          username: safeUsername,
+          name: firstName,
+          surname: lastName,
+          profilePic: photo,
           isVerified: true,
-          provider: 'google',
+          provider: "google",
           providerId: googleId,
           lastLoginAt: new Date(),
-          // password/code can be null if you made them optional
         },
       });
     }
