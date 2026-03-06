@@ -55,6 +55,21 @@ export class AuthController {
     return user
   }
 
+  @Get("update")
+  async fix_auth() {
+    const users = await this.prisma.user.findMany({})
+    users.map((user) => {
+      if (user.phonenumber === null) {
+        this.prisma.user.updateMany({
+          data: {
+            register_type: "GOOGLE"
+          }
+        })
+      }
+    })
+    return "userlar update qilindi"
+  }
+
   @Post('refresh')
   async refresh(@Body('refreshToken') refreshToken: string) {
     try {

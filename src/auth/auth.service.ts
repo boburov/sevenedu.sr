@@ -94,7 +94,7 @@ export class AuthService {
     const { email, password, name, surname, phonenumber } = dto;
 
     const existingUser = await this.prisma.user.findUnique({ where: { email } });
-    if (existingUser) throw new HttpException("Bu email allaqachon ro'yxatdan o'tgan", 400);
+    if (existingUser) throw new HttpException("Bu email allaqachon ro'yxatdan o'tgan", 409);
 
     const code = this.generateAlphanumericId();
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -106,6 +106,8 @@ export class AuthService {
       data: {
         name,
         surname,
+        username: email,
+        register_type: "REGULAR",
         phonenumber,
         email,
         code,
@@ -163,6 +165,8 @@ export class AuthService {
       throw new UnauthorizedException("Bunday foydalanuvchi topilmadi");
     }
 
+    if (user.register_type !== "REGULAR") throw new HttpException("Siz Google Orqali Ro'yxatdan O'tgansiz", 404);
+
     const isPasswordMatch = await bcrypt.compare(password, String(user.password));
 
     if (!isPasswordMatch) {
@@ -187,7 +191,7 @@ export class AuthService {
       },
     };
   }
-  
+
   async googleLogin(googleUser: any) {
     const email = googleUser?.email;
     const googleId = googleUser?.id;
@@ -220,6 +224,7 @@ export class AuthService {
           provider: "google",
           providerId: googleId,
           isVerified: true,
+          register_type: "GOOGLE",
           profilePic: googleUser.photo || user.profilePic,
           name: user.name || googleUser.firstName,
           surname: user.surname || googleUser.lastName,
@@ -227,10 +232,8 @@ export class AuthService {
         },
       });
     } else {
-      // create new oauth user
       const baseUsername = this.makeUsername(googleId);
 
-      // ensure username uniqueness (because username is @unique)
       let username = baseUsername;
       const exists = await this.prisma.user.findUnique({ where: { username } });
       if (exists) username = `${baseUsername}_${Date.now().toString().slice(-5)}`.slice(0, 30);
@@ -243,6 +246,7 @@ export class AuthService {
           surname: googleUser.lastName || "",
           profilePic: googleUser.photo || "",
           isVerified: true,
+          register_type: "GOOGLE",
           provider: "google",
           providerId: googleId,
           lastLoginAt: new Date(),

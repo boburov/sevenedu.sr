@@ -19,11 +19,17 @@ enum SubscriptionType {
   FREE
 }
 
+enum REGISTER_TYPE {
+  GOOGLE
+  REGULAR
+}
+
 model User {
-  id          String  @id @default(uuid())
-  name        String?
-  surname     String?
-  phonenumber String?
+  id            String        @id @default(uuid())
+  name          String?
+  surname       String?
+  phonenumber   String?
+  register_type REGISTER_TYPE @default(REGULAR)
 
   username String? @unique
 
