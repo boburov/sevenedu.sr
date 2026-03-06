@@ -9,8 +9,8 @@ import { CreateCategoryCourseDto } from './dto/create-course-category.dto';
 import { UploadsService } from '../uploads/uploads.service';
 import { CreateLessonDto } from './dto/create-course.dot';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
-import { Dictonary } from '../../generated/prisma';
 import { UpdateLessonsBatchDto } from './dto/update.dto';
+import { Dictonary } from '@prisma/client';
 
 @Injectable()
 export class CoursesService {
