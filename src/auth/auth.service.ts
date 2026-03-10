@@ -43,26 +43,56 @@ export class AuthService {
     });
   }
 
-  async forgotPassword(email: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      throw new HttpException('Foydalanuvchi topilmadi', 404);
-    }
+async forgotPassword(email: string) {
+  const user = await this.prisma.user.findUnique({ where: { email } });
+  if (!user) throw new HttpException('Foydalanuvchi topilmadi', 404);
 
-    const newPassword = Math.random().toString(36).slice(-8);
-
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    await this.prisma.user.update({
-      where: { email },
-      data: { password: hashedPassword },
-    });
-
-    await this.mailService.sendVerificationCode(email, `Yangi parolingiz: ${newPassword}`);
-
-    return { msg: 'Yangi parol emailga yuborildi' };
+  if (user.register_type === 'GOOGLE') {
+    throw new HttpException("Siz Google orqali ro'yxatdan o'tgansiz", 409);
   }
 
+  // Generate secure token
+  const resetToken = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+
+  await this.prisma.user.update({
+    where: { email },
+    data: {
+      resetToken,
+      resetTokenExpiresAt: expiresAt,
+    },
+  });
+
+  const resetLink = `${process.env.FRONTEND_ORIGIN}/auth/reset-password?token=${resetToken}`;
+  await this.mailService.sendResetPasswordLink(email, resetLink);
+
+  return { msg: 'Parol tiklash havolasi emailga yuborildi' };
+}
+
+async resetPassword(token: string, newPassword: string) {
+  const user = await this.prisma.user.findFirst({
+    where: { resetToken: token },
+  });
+
+  if (!user) throw new HttpException('Havola yaroqsiz', 400);
+
+  if (user.resetTokenExpiresAt && user.resetTokenExpiresAt < new Date()) {
+    throw new HttpException('Havola muddati tugagan, qayta urinib koring', 400);
+  }
+
+  const hashed = await bcrypt.hash(newPassword, 10);
+
+  await this.prisma.user.update({
+    where: { id: user.id },
+    data: {
+      password: hashed,
+      resetToken: null,
+      resetTokenExpiresAt: null,
+    },
+  });
+
+  return { msg: 'Parol muvaffaqiyatli yangilandi' };
+}
   async incrementUserCoinByEmail(email: string) {
     console.log('💡 Email kelgan:', email); // ← bu yerda qiymatni ko‘ring
 

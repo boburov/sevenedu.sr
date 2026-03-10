@@ -98,6 +98,10 @@ export class AuthController {
     return await this.authService.forgotPassword(body.email);
   }
 
+  @Post('reset-password')
+  async resetPassword(@Body() body: { token: string; password: string }) {
+    return this.authService.resetPassword(body.token, body.password);
+  }
 
   @Get('google')
   @UseGuards(GoogleAuthGuard)
@@ -114,7 +118,6 @@ export class AuthController {
       return res.redirect(`${frontendOrigin}/auth/popup?token=${encodeURIComponent(token)}`);
     } catch (e) {
       const frontendOrigin = process.env.FRONTEND_ORIGIN || 'https://sevenedu.org';
-      // ✅ Send specific error message
       const errorMsg = encodeURIComponent(e?.message || 'oauth_failed');
       return res.redirect(`${frontendOrigin}/auth/popup?error=${errorMsg}`);
     }

@@ -46,9 +46,11 @@ model User {
   provider   String?
   providerId String? @unique
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  lastLoginAt DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  lastLoginAt         DateTime?
+  resetToken          String?
+  resetTokenExpiresAt DateTime?
 
   courses              UserCourse[]
   showedLesson         LessonActivity[]
