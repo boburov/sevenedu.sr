@@ -165,7 +165,7 @@ export class AuthService {
       throw new UnauthorizedException("Bunday foydalanuvchi topilmadi");
     }
 
-    if (user.register_type !== "REGULAR") throw new HttpException("Siz Google Orqali Ro'yxatdan O'tgansiz", 404);
+    if (user.register_type !== "REGULAR") throw new HttpException("Siz Google Orqali Ro'yxatdan O'tgansiz", 409);
 
     const isPasswordMatch = await bcrypt.compare(password, String(user.password));
 
@@ -174,12 +174,7 @@ export class AuthService {
     }
 
     if (!user.isVerified) {
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: {
-          isVerified: true,
-        },
-      });
+      throw new HttpException("Emailingizni tasdiqlang", 403);
     }
 
     const payload = { sub: user.id, email: user.email };
@@ -199,26 +194,32 @@ export class AuthService {
     if (!email) throw new BadRequestException("Google account has no email");
     if (!googleId) throw new BadRequestException("Google account has no id");
 
-    // 1) If someone already has this googleId, we will sign them in
     const existingByProvider = await this.prisma.user.findUnique({
       where: { providerId: googleId },
     });
 
-    // 2) If user exists by email, link google to that account (your 1k users case)
     const existingByEmail = await this.prisma.user.findUnique({
       where: { email },
     });
 
-    // If googleId is already linked to a different email, STOP (prevents hijacking)
-    if (existingByProvider && existingByEmail && existingByProvider.id !== existingByEmail.id) {
+    if (existingByProvider && existingByEmail &&
+      existingByProvider.id !== existingByEmail.id) {
       throw new ConflictException("This Google account is already linked to another user");
     }
 
-    let user = existingByEmail || existingByProvider;
+    const user = existingByEmail || existingByProvider;
+
+    // ✅ Block REGULAR users from using Google login
+    if (user && user.register_type === "REGULAR") {
+      throw new HttpException(
+        "Siz oddiy ro'yxatdan o'tgansiz. Iltimos, email va parol bilan kiring.",
+        409
+      );
+    }
 
     if (user) {
-      // link/update
-      user = await this.prisma.user.update({
+      // Existing GOOGLE user — update and sign in
+      const updatedUser = await this.prisma.user.update({
         where: { id: user.id },
         data: {
           provider: "google",
@@ -231,30 +232,32 @@ export class AuthService {
           lastLoginAt: new Date(),
         },
       });
-    } else {
-      const baseUsername = this.makeUsername(googleId);
-
-      let username = baseUsername;
-      const exists = await this.prisma.user.findUnique({ where: { username } });
-      if (exists) username = `${baseUsername}_${Date.now().toString().slice(-5)}`.slice(0, 30);
-
-      user = await this.prisma.user.create({
-        data: {
-          email,
-          username,
-          name: googleUser.firstName || "",
-          surname: googleUser.lastName || "",
-          profilePic: googleUser.photo || "",
-          isVerified: true,
-          register_type: "GOOGLE",
-          provider: "google",
-          providerId: googleId,
-          lastLoginAt: new Date(),
-        },
-      });
+      const token = await this.jwt.signAsync({ sub: updatedUser.id, email: updatedUser.email });
+      return { token, user: updatedUser };
     }
 
-    const token = await this.jwt.signAsync({ sub: user.id, email: user.email });
-    return { token, user };
+    // Brand new user — create
+    const baseUsername = this.makeUsername(googleId);
+    let username = baseUsername;
+    const exists = await this.prisma.user.findUnique({ where: { username } });
+    if (exists) username = `${baseUsername}_${Date.now().toString().slice(-5)}`.slice(0, 30);
+
+    const newUser = await this.prisma.user.create({
+      data: {
+        email,
+        username,
+        name: googleUser.firstName || "",
+        surname: googleUser.lastName || "",
+        profilePic: googleUser.photo || "",
+        isVerified: true,
+        register_type: "GOOGLE",
+        provider: "google",
+        providerId: googleId,
+        lastLoginAt: new Date(),
+      },
+    });
+
+    const token = await this.jwt.signAsync({ sub: newUser.id, email: newUser.email });
+    return { token, user: newUser };
   }
 }
