@@ -110,13 +110,14 @@ export class AuthController {
   async googleCallback(@Req() req: any, @Res() res: Response) {
     try {
       const { token } = await this.authService.googleLogin(req.user);
-
       const frontendOrigin = process.env.FRONTEND_ORIGIN || 'https://sevenedu.org';
       return res.redirect(`${frontendOrigin}/auth/popup?token=${encodeURIComponent(token)}`);
     } catch (e) {
-      // if something fails, send to a clean error page in frontend (optional)
       const frontendOrigin = process.env.FRONTEND_ORIGIN || 'https://sevenedu.org';
-      return res.redirect(`${frontendOrigin}/auth/popup?error=oauth_failed`);
+      // ✅ Send specific error message
+      const errorMsg = encodeURIComponent(e?.message || 'oauth_failed');
+      return res.redirect(`${frontendOrigin}/auth/popup?error=${errorMsg}`);
     }
   }
+
 }
