@@ -14,7 +14,6 @@ export class AuthService {
   constructor(
     private mailService: MailService,
     private jwt: JwtService,
-    private uploadService: UploadsService,
     private prisma: PrismaService,
   ) { }
 

@@ -105,21 +105,21 @@ export class AuthController {
 
   @Get('google')
   @UseGuards(GoogleAuthGuard)
-  async googleLogin() {
-    // Passport redirects to Google
+  async googleLogin(@Req() req) {
+    console.log(req.originalUrl);
   }
 
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
   async googleCallback(@Req() req: any, @Res() res: Response) {
+    const FRONTEND_URL = 'https://sevenedu.org'; // yoki process.env.FRONTEND_URL
+
     try {
       const { token } = await this.authService.googleLogin(req.user);
-      const frontendOrigin = process.env.FRONTEND_ORIGIN || 'https://sevenedu.org';
-      return res.redirect(`${frontendOrigin}/auth/popup?token=${encodeURIComponent(token)}`);
+      return res.redirect(302, `${FRONTEND_URL}/auth/popup?token=${encodeURIComponent(token)}`);
     } catch (e) {
-      const frontendOrigin = process.env.FRONTEND_ORIGIN || 'https://sevenedu.org';
       const errorMsg = encodeURIComponent(e?.message || 'oauth_failed');
-      return res.redirect(`${frontendOrigin}/auth/popup?error=${errorMsg}`);
+      return res.redirect(302, `${FRONTEND_URL}/auth/popup?error=${errorMsg}`);
     }
   }
 
