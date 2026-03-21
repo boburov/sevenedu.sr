@@ -109,18 +109,22 @@ export class AuthController {
     console.log(req.originalUrl);
   }
 
-  @Get('google/callback')
-  @UseGuards(GoogleAuthGuard)
-  async googleCallback(@Req() req: any, @Res() res: Response) {
-    const FRONTEND_URL = 'https://sevenedu.org'; // yoki process.env.FRONTEND_URL
+@Get('google/callback')
+@UseGuards(GoogleAuthGuard)
+async googleCallback(@Req() req: any, @Res() res: Response) {
+  const FRONTEND_URL = (process.env.FRONTEND_URL || 'https://sevenedu.org').replace(/\/+$/, '');
 
-    try {
-      const { token } = await this.authService.googleLogin(req.user);
-      return res.redirect(302, `${FRONTEND_URL}/auth/popup?token=${encodeURIComponent(token)}`);
-    } catch (e) {
-      const errorMsg = encodeURIComponent(e?.message || 'oauth_failed');
-      return res.redirect(302, `${FRONTEND_URL}/auth/popup?error=${errorMsg}`);
-    }
+  if (!FRONTEND_URL.startsWith('https://') && !FRONTEND_URL.startsWith('http://')) {
+    console.error('❌ FRONTEND_URL protokolsiz:', FRONTEND_URL);
+    return res.status(500).send('Server misconfiguration');
   }
 
+  try {
+    const { token } = await this.authService.googleLogin(req.user);
+    return res.redirect(302, `${FRONTEND_URL}/auth/popup?token=${encodeURIComponent(token)}`);
+  } catch (e) {
+    const errorMsg = encodeURIComponent(e?.message || 'oauth_failed');
+    return res.redirect(302, `${FRONTEND_URL}/auth/popup?error=${errorMsg}`);
+  }
+}
 }
