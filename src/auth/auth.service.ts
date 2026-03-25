@@ -8,6 +8,8 @@ import { VerifyCodeDto } from './dto/verify-code';
 import { LoginUserDto } from './dto/login-user.dto';
 import { UploadsService } from '../uploads/uploads.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { LoginAdminDto } from './dto/login-admin.dto';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
@@ -15,10 +17,71 @@ export class AuthService {
     private mailService: MailService,
     private jwt: JwtService,
     private prisma: PrismaService,
+    private configService: ConfigService
   ) { }
 
   private makeUsername(googleId: string) {
     return `u_${googleId}`.slice(0, 30);
+  }
+
+  async adminLogin(dto: LoginAdminDto) {
+    const adminEmail = this.configService.get<string>('ADMIN_EMAIL');
+    const adminPlainPassword = this.configService.get<string>('ADMIN_PASSWORD');
+    const adminName = this.configService.get<string>('ADMIN_NAME') || 'Admin';
+    const adminSurname = this.configService.get<string>('ADMIN_SURNAME') || 'Admin';
+    const adminRole = this.configService.get<string>('ADMIN_ROLE') || 'SUPER_ADMIN';
+
+    if (!adminEmail || !adminPlainPassword) {
+      throw new UnauthorizedException('Admin sozlamalari .env faylida topilmadi');
+    }
+
+    // Email tekshirish (katta-kichik harf farqi yo'q)
+    if (dto.email.trim().toLowerCase() !== adminEmail.toLowerCase()) {
+      throw new UnauthorizedException('Email yoki parol noto‘g‘ri');
+    }
+
+    // Oddiy parol tekshirish (string solishtirish)
+    if (dto.password.trim() !== adminPlainPassword) {
+      throw new UnauthorizedException('Email yoki parol noto‘g‘ri');
+    }
+
+    // JWT token yaratish
+    const payload = {
+      sub: 'admin',
+      email: adminEmail,
+      role: adminRole,
+      isAdmin: true,
+      name: adminName,
+      surname: adminSurname,
+    };
+
+    const token = this.jwt.sign(payload, {
+      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN') || '24h',
+    });
+
+    return {
+      success: true,
+      token,
+      user: {
+        id: 'admin',
+        name: adminName,
+        surname: adminSurname,
+        email: adminEmail,
+        role: adminRole,
+        isAuthenticated: true,
+      },
+    };
+  }
+
+  // Parolni solishtirish (oddiy yoki bcrypt)
+  private async comparePassword(inputPassword: string, storedPassword: string): Promise<boolean> {
+    // Agar .env dagi parol oddiy matn bo'lsa:
+    if (!storedPassword.startsWith('$2b$')) {
+      return inputPassword === storedPassword;
+    }
+
+    // Agar bcrypt hash bo'lsa:
+    return bcrypt.compare(inputPassword, storedPassword);
   }
 
   generateAlphanumericId(length = 6): string {
@@ -42,56 +105,56 @@ export class AuthService {
     });
   }
 
-async forgotPassword(email: string) {
-  const user = await this.prisma.user.findUnique({ where: { email } });
-  if (!user) throw new HttpException('Foydalanuvchi topilmadi', 404);
+  async forgotPassword(email: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) throw new HttpException('Foydalanuvchi topilmadi', 404);
 
-  if (user.register_type === 'GOOGLE') {
-    throw new HttpException("Siz Google orqali ro'yxatdan o'tgansiz", 409);
+    if (user.register_type === 'GOOGLE') {
+      throw new HttpException("Siz Google orqali ro'yxatdan o'tgansiz", 409);
+    }
+
+    // Generate secure token
+    const resetToken = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+
+    await this.prisma.user.update({
+      where: { email },
+      data: {
+        resetToken,
+        resetTokenExpiresAt: expiresAt,
+      },
+    });
+
+    const resetLink = `${process.env.FRONTEND_ORIGIN}/auth/reset-password?token=${resetToken}`;
+    await this.mailService.sendResetPasswordLink(email, resetLink);
+
+    return { msg: 'Parol tiklash havolasi emailga yuborildi' };
   }
 
-  // Generate secure token
-  const resetToken = crypto.randomUUID();
-  const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+  async resetPassword(token: string, newPassword: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { resetToken: token },
+    });
 
-  await this.prisma.user.update({
-    where: { email },
-    data: {
-      resetToken,
-      resetTokenExpiresAt: expiresAt,
-    },
-  });
+    if (!user) throw new HttpException('Havola yaroqsiz', 400);
 
-  const resetLink = `${process.env.FRONTEND_ORIGIN}/auth/reset-password?token=${resetToken}`;
-  await this.mailService.sendResetPasswordLink(email, resetLink);
+    if (user.resetTokenExpiresAt && user.resetTokenExpiresAt < new Date()) {
+      throw new HttpException('Havola muddati tugagan, qayta urinib koring', 400);
+    }
 
-  return { msg: 'Parol tiklash havolasi emailga yuborildi' };
-}
+    const hashed = await bcrypt.hash(newPassword, 10);
 
-async resetPassword(token: string, newPassword: string) {
-  const user = await this.prisma.user.findFirst({
-    where: { resetToken: token },
-  });
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashed,
+        resetToken: null,
+        resetTokenExpiresAt: null,
+      },
+    });
 
-  if (!user) throw new HttpException('Havola yaroqsiz', 400);
-
-  if (user.resetTokenExpiresAt && user.resetTokenExpiresAt < new Date()) {
-    throw new HttpException('Havola muddati tugagan, qayta urinib koring', 400);
+    return { msg: 'Parol muvaffaqiyatli yangilandi' };
   }
-
-  const hashed = await bcrypt.hash(newPassword, 10);
-
-  await this.prisma.user.update({
-    where: { id: user.id },
-    data: {
-      password: hashed,
-      resetToken: null,
-      resetTokenExpiresAt: null,
-    },
-  });
-
-  return { msg: 'Parol muvaffaqiyatli yangilandi' };
-}
   async incrementUserCoinByEmail(email: string) {
     console.log('💡 Email kelgan:', email); // ← bu yerda qiymatni ko‘ring
 
