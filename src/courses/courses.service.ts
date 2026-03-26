@@ -43,6 +43,23 @@ export class CoursesService {
     });
   }
 
+  // courses.service.ts
+
+  async fixAllVideoUrls(data: { id: string; videoUrl: string }[]) {
+    const updates = data.map((item) =>
+      this.prisma.lessons.update({
+        where: { id: item.id },
+        data: { videoUrl: item.videoUrl },
+      }),
+    );
+
+    await this.prisma.$transaction(updates);
+
+    return {
+      message: `${data.length} ta lesson videoUrl yangilandi ✅`,
+    };
+  }
+
   async saveVocabularyResult(
     lessonId: string,
     userId: string,

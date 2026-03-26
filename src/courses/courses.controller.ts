@@ -33,6 +33,7 @@ import { UpdateCategory } from './application/update-category.usecase';
 import { UpdateLessonsBatch } from './application/update-lessons-batch.usecase';
 import { UpdateLessonUsecase } from './application/update.lesson.usecase';
 import { ReorderService } from './scripts/fix-lesson-orders';
+import { FixVideoUrlsDto } from './dto/video-url-fixed.dto';
 
 @Controller('courses')
 export class CoursesController {
@@ -202,6 +203,12 @@ export class CoursesController {
   @Patch('lessons/batch')
   async updateLessonsBatch(@Body() body: UpdateLessonsBatchDto) {
     return this.updateLessonBatch.update(body);
+  }
+
+  // fix video url
+  @Post('fix/video-urls')
+  async fixVideoUrls(@Body() body: FixVideoUrlsDto) {
+    return this.courseService.fixAllVideoUrls(body.data);
   }
 
   //  reorder lessons
