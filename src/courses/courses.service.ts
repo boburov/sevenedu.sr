@@ -44,8 +44,11 @@ export class CoursesService {
   }
 
   // courses.service.ts
-
   async fixAllVideoUrls(data: { id: string; videoUrl: string }[]) {
+    if (!data || !Array.isArray(data)) {
+      throw new BadRequestException('data array yuborilmadi');
+    }
+
     const updates = data.map((item) =>
       this.prisma.lessons.update({
         where: { id: item.id },
@@ -56,10 +59,9 @@ export class CoursesService {
     await this.prisma.$transaction(updates);
 
     return {
-      message: `${data.length} ta lesson videoUrl yangilandi ✅`,
+      message: `${data.length} ta lesson yangilandi ✅`,
     };
   }
-
   async saveVocabularyResult(
     lessonId: string,
     userId: string,

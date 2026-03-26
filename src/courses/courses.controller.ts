@@ -207,8 +207,10 @@ export class CoursesController {
 
   // fix video url
   @Post('fix/video-urls')
-  async fixVideoUrls(@Body() body: FixVideoUrlsDto) {
-    return this.courseService.fixAllVideoUrls(body.data);
+  async fixVideoUrls(
+    @Body() data: { id: string; videoUrl: string }[],
+  ) {
+    return this.courseService.fixAllVideoUrls(data);
   }
 
   //  reorder lessons
