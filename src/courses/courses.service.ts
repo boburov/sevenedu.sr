@@ -45,8 +45,16 @@ export class CoursesService {
 
   // courses.service.ts
   async fixAllVideoUrls(data: { id: string; videoUrl: string }[]) {
-    if (!data || !Array.isArray(data)) {
-      throw new BadRequestException('data array yuborilmadi');
+    if (!data) {
+      throw new BadRequestException('Data kelmadi ❌');
+    }
+
+    if (!Array.isArray(data)) {
+      throw new BadRequestException('Data array bo‘lishi kerak ❌');
+    }
+
+    if (data.length === 0) {
+      return { message: 'Hech nima yo‘q 🤷‍♂️' };
     }
 
     const updates = data.map((item) =>
@@ -59,9 +67,10 @@ export class CoursesService {
     await this.prisma.$transaction(updates);
 
     return {
-      message: `${data.length} ta lesson yangilandi ✅`,
+      message: `${data.length} ta lesson update bo‘ldi ✅`,
     };
   }
+
   async saveVocabularyResult(
     lessonId: string,
     userId: string,

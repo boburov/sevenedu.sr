@@ -207,9 +207,12 @@ export class CoursesController {
 
   // fix video url
   @Post('fix/video-urls')
-  async fixVideoUrls(
-    @Body() data: { id: string; videoUrl: string }[],
-  ) {
+  async fixVideoUrls(@Body() body: any) {
+    console.log('BODY:', body); // DEBUG
+
+    // 2 xil formatni ham qabul qiladi
+    const data = Array.isArray(body) ? body : body.data;
+
     return this.courseService.fixAllVideoUrls(data);
   }
 
