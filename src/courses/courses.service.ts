@@ -158,6 +158,17 @@ export class CoursesService {
     return newCourse;
   }
 
+  // courses.service.ts
+  async batchDeleteLessons(lessonIds: string[]) {
+    const result = await this.prisma.lessons.deleteMany({
+      where: { id: { in: lessonIds } },
+    });
+
+    return {
+      message: `${result.count} ta lesson database’dan o‘chirildi ✅`,
+    };
+  }
+
   async deleteLesson(id: string) {
     const lesson = await this.prisma.lessons.findFirst({
       where: { id },

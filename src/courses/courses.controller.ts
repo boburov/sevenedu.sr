@@ -54,11 +54,26 @@ export class CoursesController {
     return this.courseService.getAll();
   }
 
-  // DELETE all invinsible lessons
+  //   all invinsible lessons
   @Delete('delete/all/invisible-lessons')
   @HttpCode(HttpStatus.OK)
   async deleteAllInvisibleLessons() {
     return this.courseService.deleteAllInvisibleLessons();
+  }
+
+  // courses.controller.ts
+  @Patch('lessons/batch-delete')
+  @HttpCode(HttpStatus.OK)
+  async batchDeleteLessons(@Body() body: { lessonIds: string[] }) {
+    if (!Array.isArray(body.lessonIds) || body.lessonIds.length === 0) {
+      throw new BadRequestException('lessonIds array bo‘lishi kerak va bo‘sh bo‘lmasligi kerak');
+    }
+
+    if (body.lessonIds.length > 100) {
+      throw new BadRequestException('Bir martada maksimal 100 ta dars o‘chirilishi mumkin');
+    }
+
+    return this.courseService.batchDeleteLessons(body.lessonIds);
   }
 
   // Vocabulary Section
