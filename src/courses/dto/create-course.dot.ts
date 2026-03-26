@@ -5,6 +5,9 @@ export class CreateLessonDto {
   @IsString()
   title: string
 
+  @IsString()
+  videoUrl: string
+
   @IsBoolean()
   @Transform(({ value }) => value === 'true')
   isDemo: boolean

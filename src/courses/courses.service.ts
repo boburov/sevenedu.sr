@@ -128,7 +128,6 @@ export class CoursesService {
   async createCourse(
     createCourse: CreateLessonDto,
     id: string,
-    file: Express.Multer.File,
   ) {
     const { title, isDemo } = createCourse;
 
@@ -137,7 +136,6 @@ export class CoursesService {
     });
     if (!category) throw new HttpException(`Category Not Found`, 404);
 
-    const videoFileUrl = await this.uploadsService.uploadFile(file, 'videos');
 
     const lastLesson = await this.prisma.lessons.findFirst({
       where: { coursesCategoryId: id },
@@ -151,7 +149,7 @@ export class CoursesService {
       data: {
         title,
         isDemo,
-        videoUrl: videoFileUrl,
+        videoUrl: createCourse.videoUrl,
         coursesCategoryId: id,
         order: newOrder,
       },

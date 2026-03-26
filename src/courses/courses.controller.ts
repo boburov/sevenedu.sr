@@ -156,14 +156,11 @@ export class CoursesController {
   // Lessons Section
   // create lesson section 
   @Post(':id/lesson')
-  @UseInterceptors(FileInterceptor('video'))
   async createNewLesson(
     @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File,
     @Body() body: CreateLessonDto,
   ) {
-    if (!file) throw new Error('Video file not provided');
-    return this.courseService.createCourse(body, id, file);
+    return this.courseService.createCourse(body, id);
   }
 
   // Get Lessons By ID
