@@ -3,10 +3,13 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { NotificationRecipientDto } from './dto/update-ntf.dto';
+import { FirebaseService } from '../firebase/firebase.service';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private prisma: PrismaService,
+    private firebaseService: FirebaseService) { }
   private readonly logger = new Logger(NotificationsService.name);
 
   @Cron('0 16 * * *')
@@ -14,6 +17,13 @@ export class NotificationsService {
     this.logger.log('⏰ 16:00 — Dars ko‘rmagan foydalanuvchilar aniqlanmoqda...');
     await this.notifyUsersInactiveToday();
     await this.notifyUsersInactiveForAWeek();
+  }
+
+  async saveUserFcmToken(userId: string, fcmToken: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { fcmToken },
+    });
   }
 
   async notifyUsersInactiveToday() {
@@ -108,21 +118,26 @@ export class NotificationsService {
 
   async createNotificationForUser(userId: string, data: { title: string; message: string }) {
     const notification = await this.prisma.notification.create({
-      data: {
-        title: data.title,
-        message: data.message,
-        isGlobal: false,
-      },
+      data: { title: data.title, message: data.message, isGlobal: false },
     });
 
-    return this.prisma.notificationRecipient.create({
-      data: {
-        userId,
-        notificationId: notification.id,
-      },
+    await this.prisma.notificationRecipient.create({
+      data: { userId, notificationId: notification.id },
     });
+
+    // YANGI: push notification yuborish
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (user?.fcmToken) {
+      await this.firebaseService.sendPushNotification(
+        user.fcmToken,
+        data.title,
+        data.message,
+      );
+    }
+
+    return notification;
   }
-
+  
   async createNotificationForCourseUsers(courseId: string, dto: CreateNotificationDto) {
     const notification = await this.prisma.notification.create({
       data: {

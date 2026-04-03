@@ -19,6 +19,14 @@ export class NotificationsController {
     return await this.notificationsService.getAllNotifications();
   }
 
+  @Post('register-token')
+  async registerToken(@Body() body: { userId: string; fcmToken: string }) {
+    return await this.notificationsService.saveUserFcmToken(
+      body.userId,
+      body.fcmToken
+    );
+  }
+
   @Get(':id')
   async getOne(@Param('id') id: string) {
     return await this.notificationsService.getNotificationById(id);
