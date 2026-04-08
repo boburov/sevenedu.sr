@@ -54,6 +54,18 @@ export class CoursesController {
     return this.courseService.getAll();
   }
 
+  @Patch('category/:id/thumbnail')
+  async updateThumbnail(
+    @Param('id') id: string,
+    @Body() body: { thumbnail: string },
+  ) {
+    if (!body.thumbnail) {
+      throw new BadRequestException('thumbnail majburiy ❌');
+    }
+
+    return this.courseService.updateCategoryThumbnail(id, body.thumbnail);
+  }
+
   //   all invinsible lessons
   @Delete('delete/all/invisible-lessons')
   @HttpCode(HttpStatus.OK)

@@ -183,6 +183,28 @@ export class CoursesService {
     });
   }
 
+  async updateCategoryThumbnail(id: string, thumbnail: string) {
+    const category = await this.prisma.coursesCategory.findUnique({
+      where: { id },
+    });
+
+    if (!category) {
+      throw new NotFoundException('Category topilmadi ❌');
+    }
+
+    const updated = await this.prisma.coursesCategory.update({
+      where: { id },
+      data: {
+        thumbnail, // yoki sening field noming (thumbnail / image / cover)
+      },
+    });
+
+    return {
+      message: 'Thumbnail yangilandi ✅',
+      data: updated,
+    };
+  }
+
   async deleteAllInvisibleLessons() {
     const { count } = await this.prisma.lessons.deleteMany({
       where: {

@@ -279,6 +279,32 @@ export class AuthService {
     };
   }
 
+  async googleMobileAuth(idToken: string) {
+    // Verify Google ID token by calling Google tokeninfo endpoint
+    const axios = (await import('axios')).default;
+    let payload: any;
+    try {
+      const { data } = await axios.get(
+        `https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`,
+      );
+      payload = data;
+    } catch {
+      throw new HttpException("Google token yaroqsiz", 401);
+    }
+
+    const email = payload.email;
+    const googleId = payload.sub;
+    const firstName = payload.given_name || "";
+    const lastName = payload.family_name || "";
+    const photo = payload.picture || "";
+
+    if (!email) throw new BadRequestException("Google account has no email");
+    if (!googleId) throw new BadRequestException("Google account has no id");
+
+    // Reuse existing googleLogin logic
+    return this.googleLogin({ email, id: googleId, firstName, lastName, photo });
+  }
+
   async googleLogin(googleUser: any) {
     const email = googleUser?.email;
     const googleId = googleUser?.id;

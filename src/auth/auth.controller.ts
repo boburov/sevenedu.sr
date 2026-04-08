@@ -109,6 +109,12 @@ export class AuthController {
     return this.authService.resetPassword(body.token, body.password);
   }
 
+  @Post('google/mobile')
+  async googleMobileAuth(@Body('idToken') idToken: string) {
+    if (!idToken) throw new UnauthorizedException('idToken required');
+    return this.authService.googleMobileAuth(idToken);
+  }
+
   @Get('google')
   @UseGuards(GoogleAuthGuard)
   async googleLogin(@Req() req) {
