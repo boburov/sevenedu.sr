@@ -10,9 +10,10 @@ export class CreateLessonDto {
 
   @IsBoolean()
   @Transform(({ value }) => {
+    if (typeof value === 'boolean') return value;  // ← bu qator yo'q edi!
     if (value === 'true') return true;
     if (value === 'false') return false;
-    return value; // boolean kelsa o'zini qaytaradi
+    return value;
   })
   isDemo: boolean
 
