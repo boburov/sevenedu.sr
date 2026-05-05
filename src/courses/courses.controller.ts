@@ -54,6 +54,14 @@ export class CoursesController {
     return this.courseService.getAll();
   }
 
+  @Post(':id/lessons/batch')
+async createLessonsBatch(
+  @Param('id') id: string,
+  @Body() body: CreateLessonDto[],
+) {
+  return this.courseService.createLessonsBatch(body, id);
+}
+  
   @Patch('category/:id/thumbnail')
   async updateThumbnail(
     @Param('id') id: string,
