@@ -34,6 +34,7 @@ import { UpdateLessonsBatch } from './application/update-lessons-batch.usecase';
 import { UpdateLessonUsecase } from './application/update.lesson.usecase';
 import { ReorderService } from './scripts/fix-lesson-orders';
 import { FixVideoUrlsDto } from './dto/video-url-fixed.dto';
+import { Body, UsePipes, ValidationPipe } from '@nestjs/common';
 
 @Controller('courses')
 export class CoursesController {
@@ -54,11 +55,14 @@ export class CoursesController {
     return this.courseService.getAll();
   }
 
-  @Post(':id/lessons/batch')
+@Post(':id/lessons/batch')
 async createLessonsBatch(
   @Param('id') id: string,
   @Body() body: CreateLessonDto[],
 ) {
+  if (!Array.isArray(body)) {
+    throw new BadRequestException('Array bo'lishi kerak');
+  }
   return this.courseService.createLessonsBatch(body, id);
 }
   
