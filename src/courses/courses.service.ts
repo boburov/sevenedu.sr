@@ -43,6 +43,37 @@ export class CoursesService {
     });
   }
 
+  async createLessonsBatch(lessons: CreateLessonDto[], categoryId: string) {
+  const category = await this.prisma.coursesCategory.findUnique({
+    where: { id: categoryId },
+  });
+  if (!category) throw new HttpException('Category Not Found', 404);
+
+  const lastLesson = await this.prisma.lessons.findFirst({
+    where: { coursesCategoryId: categoryId },
+    orderBy: { order: 'desc' },
+    select: { order: true },
+  });
+
+  let order = lastLesson ? lastLesson.order + 1 : 1;
+
+  const created = await this.prisma.$transaction(
+    lessons.map((lesson) =>
+      this.prisma.lessons.create({
+        data: {
+          title: lesson.title,
+          videoUrl: lesson.videoUrl,
+          isDemo: lesson.isDemo,
+          coursesCategoryId: categoryId,
+          order: order++,
+        },
+      })
+    )
+  );
+
+  return { message: `${created.length} ta lesson yaratildi ✅`, data: created };
+}
+
   // courses.service.ts
   async fixAllVideoUrls(data: { id: string; videoUrl: string }[]) {
     if (!data) {
