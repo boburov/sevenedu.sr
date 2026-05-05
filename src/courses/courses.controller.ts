@@ -58,12 +58,9 @@ export class CoursesController {
 @Post(':id/lessons/batch')
 async createLessonsBatch(
   @Param('id') id: string,
-  @Body() body: CreateLessonDto[],
+  @Body() body: CreateLessonsBatchDto,
 ) {
-  if (!Array.isArray(body)) {
-    throw new BadRequestException('Array bo'lishi kerak');
-  }
-  return this.courseService.createLessonsBatch(body, id);
+  return this.courseService.createLessonsBatch(body.lessons, id);
 }
   
   @Patch('category/:id/thumbnail')
