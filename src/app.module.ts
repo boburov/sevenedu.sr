@@ -15,6 +15,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { DictonaryModule } from './dictonary/dictonary.module';
 import { ActivityModule } from './activity/activity.module';
 import { SentencePuzzleModule } from './sentence-puzzle/sentence-puzzle.module';
+import { AdminModule } from './admin/admin.module';
 import confuguration from './config/confuguration';
 
 @Module({
@@ -32,6 +33,7 @@ import confuguration from './config/confuguration';
     NotificationsModule,
     ActivityModule,
     SentencePuzzleModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService, MailService],
