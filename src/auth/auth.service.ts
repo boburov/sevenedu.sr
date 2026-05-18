@@ -25,24 +25,51 @@ export class AuthService {
   }
 
   async adminLogin(dto: LoginAdminDto) {
-    const adminEmail = this.configService.get<string>('ADMIN_EMAIL');
-    const adminPlainPassword = this.configService.get<string>('ADMIN_PASSWORD');
-    const adminName = this.configService.get<string>('ADMIN_NAME') || 'Admin';
-    const adminSurname = this.configService.get<string>('ADMIN_SURNAME') || 'Admin';
-    const adminRole = this.configService.get<string>('ADMIN_ROLE') || 'SUPER_ADMIN';
+    const stripQuotes = (v?: string) =>
+      (v ?? '').trim().replace(/^['"]|['"]$/g, '').trim();
+
+    const adminEmail = stripQuotes(
+      this.configService.get<string>('ADMIN_EMAIL') ?? process.env.ADMIN_EMAIL,
+    );
+    const adminPlainPassword = stripQuotes(
+      this.configService.get<string>('ADMIN_PASSWORD') ??
+        process.env.ADMIN_PASSWORD,
+    );
+    const adminName =
+      stripQuotes(this.configService.get<string>('ADMIN_NAME')) || 'Admin';
+    const adminSurname =
+      stripQuotes(this.configService.get<string>('ADMIN_SURNAME')) || 'Admin';
+    const adminRole =
+      stripQuotes(this.configService.get<string>('ADMIN_ROLE')) ||
+      'SUPER_ADMIN';
 
     if (!adminEmail || !adminPlainPassword) {
-      throw new UnauthorizedException('Admin sozlamalari .env faylida topilmadi');
+      console.error('[adminLogin] ADMIN_EMAIL yoki ADMIN_PASSWORD .env da yo\'q', {
+        hasEmail: !!adminEmail,
+        hasPassword: !!adminPlainPassword,
+      });
+      throw new UnauthorizedException(
+        'Admin sozlamalari .env faylida topilmadi',
+      );
     }
 
-    // Email tekshirish (katta-kichik harf farqi yo'q)
-    if (dto.email.trim().toLowerCase() !== adminEmail.toLowerCase()) {
-      throw new UnauthorizedException('Email yoki parol noto‘g‘ri');
+    const inputEmail = (dto.email ?? '').trim().toLowerCase();
+    const inputPassword = (dto.password ?? '').trim();
+
+    if (inputEmail !== adminEmail.toLowerCase()) {
+      console.warn('[adminLogin] email noto\'g\'ri', {
+        got: inputEmail,
+        expected: adminEmail.toLowerCase(),
+      });
+      throw new UnauthorizedException('Email yoki parol noto\'g\'ri');
     }
 
-    // Oddiy parol tekshirish (string solishtirish)
-    if (dto.password.trim() !== adminPlainPassword) {
-      throw new UnauthorizedException('Email yoki parol noto‘g‘ri');
+    if (inputPassword !== adminPlainPassword) {
+      console.warn('[adminLogin] parol noto\'g\'ri', {
+        gotLength: inputPassword.length,
+        expectedLength: adminPlainPassword.length,
+      });
+      throw new UnauthorizedException('Email yoki parol noto\'g\'ri');
     }
 
     // JWT token yaratish
