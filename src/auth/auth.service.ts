@@ -306,17 +306,38 @@ export class AuthService {
     };
   }
 
+  // Google ID token uchun ruxsat etilgan audience'lar.
+  // Mobil (google_sign_in) tokenining `aud` qiymati serverClientId ga teng,
+  // web client esa GOOGLE_CLIENT_ID dan foydalanadi. Ikkalasi ham qabul qilinadi.
+  private googleAudiences(): string[] {
+    const mobileClientId =
+      this.configService.get<string>('GOOGLE_MOBILE_CLIENT_ID') ||
+      '496654947492-m717p6v03d4k03r3r9b4sp30jkt0m2hp.apps.googleusercontent.com';
+    const webClientId = this.configService.get<string>('GOOGLE_CLIENT_ID') || '';
+    return [mobileClientId, webClientId].filter(Boolean);
+  }
+
   async googleMobileAuth(idToken: string) {
-    // Verify Google ID token by calling Google tokeninfo endpoint
-    const axios = (await import('axios')).default;
+    // ID token'ni Google'ning ochiq kalitlari bilan tekshiramiz:
+    // imzo, muddat, issuer va audience (aud) — tokeninfo'dan farqli o'laroq
+    // bu yerda token aynan bizning ilovamiz uchun berilganini ham tasdiqlaymiz.
+    const { OAuth2Client } = await import('google-auth-library');
+    const client = new OAuth2Client();
+
     let payload: any;
     try {
-      const { data } = await axios.get(
-        `https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`,
-      );
-      payload = data;
+      const ticket = await client.verifyIdToken({
+        idToken,
+        audience: this.googleAudiences(),
+      });
+      payload = ticket.getPayload();
     } catch {
       throw new HttpException("Google token yaroqsiz", 401);
+    }
+
+    if (!payload) throw new HttpException("Google token yaroqsiz", 401);
+    if (payload.email_verified === false) {
+      throw new HttpException("Google email tasdiqlanmagan", 401);
     }
 
     const email = payload.email;

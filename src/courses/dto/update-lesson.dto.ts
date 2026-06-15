@@ -10,6 +10,10 @@ export class UpdateLessonDto {
   isDemo?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  isVisible?: boolean;
+
+  @IsOptional()
   @IsString()
   videoUrl?: string;
 }

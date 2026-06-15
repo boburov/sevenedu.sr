@@ -41,6 +41,8 @@ export class AdminService {
       topUsersByCoins,
       recentUsers,
       recentCertificates,
+      payingUsersRaw,
+      salesByCourseRaw,
     ] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.user.count({ where: { isVerified: true } }),
@@ -109,6 +111,18 @@ export class AdminService {
           course: { select: { id: true, title: true } },
         },
       }),
+      // Sotuvlar: pulli (FREE bo'lmagan) obunalarni sotib olgan noyob foydalanuvchilar
+      this.prisma.userCourse.findMany({
+        where: { subscription: { not: 'FREE' } },
+        select: { userId: true },
+        distinct: ['userId'],
+      }),
+      // Sotuvlar: har bir kurs bo'yicha pulli obunalar (turi bilan)
+      this.prisma.userCourse.groupBy({
+        by: ['courseId', 'subscription'],
+        where: { subscription: { not: 'FREE' } },
+        _count: { courseId: true },
+      }),
     ]);
 
     const buckets: Record<string, number> = {};
@@ -143,6 +157,36 @@ export class AdminService {
         enrollments: c._count.courseId,
       };
     });
+
+    // Sotuvlar: har bir kurs bo'yicha pulli obunalarni yig'amiz
+    const salesCourseIds = [...new Set(salesByCourseRaw.map((s) => s.courseId))];
+    const salesCourseDetails = salesCourseIds.length
+      ? await this.prisma.coursesCategory.findMany({
+          where: { id: { in: salesCourseIds } },
+          select: { id: true, title: true, shortName: true, thumbnail: true },
+        })
+      : [];
+    const salesMap: Record<string, { monthly: number; fullCharge: number }> = {};
+    for (const row of salesByCourseRaw) {
+      const entry = (salesMap[row.courseId] ??= { monthly: 0, fullCharge: 0 });
+      if (row.subscription === 'MONTHLY') entry.monthly += row._count.courseId;
+      else if (row.subscription === 'FULL_CHARGE')
+        entry.fullCharge += row._count.courseId;
+    }
+    const salesByCourse = Object.entries(salesMap)
+      .map(([courseId, v]) => {
+        const details = salesCourseDetails.find((d) => d.id === courseId);
+        return {
+          id: courseId,
+          title: details?.title || 'Noma\'lum kurs',
+          shortName: details?.shortName || '',
+          thumbnail: details?.thumbnail || '',
+          monthly: v.monthly,
+          fullCharge: v.fullCharge,
+          total: v.monthly + v.fullCharge,
+        };
+      })
+      .sort((a, b) => b.total - a.total);
 
     const completionRate = totalEnrollments
       ? Math.round((finishedEnrollments / totalEnrollments) * 100)
@@ -179,6 +223,13 @@ export class AdminService {
         monthly: monthlySubs,
         fullCharge: fullChargeSubs,
         free: freeSubs,
+      },
+      sales: {
+        totalPaid: monthlySubs + fullChargeSubs,
+        payingUsers: payingUsersRaw.length,
+        monthly: monthlySubs,
+        fullCharge: fullChargeSubs,
+        byCourse: salesByCourse,
       },
       activity: {
         total: totalActivity,

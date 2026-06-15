@@ -34,7 +34,7 @@ import { UpdateLessonsBatch } from './application/update-lessons-batch.usecase';
 import { UpdateLessonUsecase } from './application/update.lesson.usecase';
 import { ReorderService } from './scripts/fix-lesson-orders';
 import { FixVideoUrlsDto } from './dto/video-url-fixed.dto';
-import { Body, UsePipes, ValidationPipe } from '@nestjs/common';
+import { CreateLessonsBatchDto } from './dto/create-lesson-batch.dto';
 
 @Controller('courses')
 export class CoursesController {
@@ -216,11 +216,15 @@ async createLessonsBatch(
     if (typeof body.isDemo === 'string') {
       body.isDemo = body.isDemo === 'true';
     }
+    if (typeof body.isVisible === 'string') {
+      body.isVisible = body.isVisible === 'true';
+    }
 
     const dto: UpdateLessonDto = {
       title: body.title,
       videoUrl: body.videoUrl,
       isDemo: body.isDemo,
+      isVisible: body.isVisible,
     };
 
     return this.updateLessonUsecase.update(id, dto, file);
