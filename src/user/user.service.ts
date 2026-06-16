@@ -454,6 +454,44 @@ export class UserService {
     };
   }
 
+  // Reyting — coin bo'yicha eng yaxshi 100 ta o'quvchi + joriy foydalanuvchi o'rni
+  async getLeaderboard(currentUserId: string) {
+    const select = {
+      id: true,
+      name: true,
+      surname: true,
+      profilePic: true,
+      coins: true,
+    };
+
+    const topUsers = await this.prisma.user.findMany({
+      orderBy: [{ coins: 'desc' }, { createdAt: 'asc' }],
+      take: 100,
+      select,
+    });
+
+    const leaderboard = topUsers.map((user, index) => ({
+      ...user,
+      rank: index + 1,
+    }));
+
+    // Joriy foydalanuvchining o'rni (top 100 ichida bo'lmasa ham)
+    const me = await this.prisma.user.findUnique({
+      where: { id: currentUserId },
+      select,
+    });
+
+    let currentUser: (typeof me & { rank: number }) | null = null;
+    if (me) {
+      const higherCount = await this.prisma.user.count({
+        where: { coins: { gt: me.coins } },
+      });
+      currentUser = { ...me, rank: higherCount + 1 };
+    }
+
+    return { leaderboard, currentUser };
+  }
+
   async chatWithAI(
     userId: string,
     lessonId: string,

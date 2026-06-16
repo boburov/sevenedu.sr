@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -10,6 +11,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import { CEFR_LEVELS } from './create-course.dot';
 
 export class UpdateLessonBatchItemDto {
   @IsString()
@@ -32,6 +34,11 @@ export class UpdateLessonBatchItemDto {
   @IsOptional()
   @IsUrl()
   videoUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(CEFR_LEVELS as unknown as string[])
+  level?: string;
 
   @IsOptional()
   @IsInt()

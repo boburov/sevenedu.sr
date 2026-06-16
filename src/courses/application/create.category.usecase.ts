@@ -51,6 +51,7 @@ export class Category {
                         title: true,
                         isDemo: true,
                         videoUrl: true,
+                        level: true,
                         order: true,
                         isVisible: true,
                     },

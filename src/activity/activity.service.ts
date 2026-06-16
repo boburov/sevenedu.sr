@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { format, subDays, eachDayOfInterval } from 'date-fns';
+import { StreakService } from '../streak/streak.service';
 
 @Injectable()
 export class ActivityService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private prisma: PrismaService,
+    private streak: StreakService,
+  ) { }
 
   async markLesson(
     userId: string,
@@ -36,8 +40,9 @@ export class ActivityService {
     });
 
 
+    let result;
     if (existing) {
-      return this.prisma.lessonActivity.update({
+      result = await this.prisma.lessonActivity.update({
         where: { userId_lessonsId: { userId, lessonsId: lessonId } },
         data: {
           courseId,
@@ -49,21 +54,26 @@ export class ActivityService {
           watchedAt: new Date(),
         },
       });
+    } else {
+      result = await this.prisma.lessonActivity.create({
+        data: {
+          userId,
+          lessonsId: lessonId,
+          courseId,
+          vocabularyCorrect: data.vocabularyCorrect || 0,
+          vocabularyWrong: data.vocabularyWrong || 0,
+          quizCorrect: data.quizCorrect || 0,
+          quizWrong: data.quizWrong || 0,
+          score: data.score,
+          watchedAt: new Date(),
+        },
+      });
     }
 
-    return this.prisma.lessonActivity.create({
-      data: {
-        userId,
-        lessonsId: lessonId,
-        courseId,
-        vocabularyCorrect: data.vocabularyCorrect || 0,
-        vocabularyWrong: data.vocabularyWrong || 0,
-        quizCorrect: data.quizCorrect || 0,
-        quizWrong: data.quizWrong || 0,
-        score: data.score,
-        watchedAt: new Date(),
-      },
-    });
+    // Dars yakunlanganda streak yangilanadi (xato bo'lsa ham asosiy oqim buzilmasin)
+    await this.streak.recordActivity(userId).catch(() => null);
+
+    return result;
   }
 
   async getLessonActivity(userId: string, lessonId: string) {

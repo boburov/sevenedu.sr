@@ -41,6 +41,7 @@ export class UpdateLessonsBatch {
                 if (typeof item.isDemo !== 'undefined') data.isDemo = item.isDemo;
                 if (typeof item.isVisible !== 'undefined') data.isVisible = item.isVisible;
                 if (typeof item.videoUrl !== 'undefined') data.videoUrl = item.videoUrl;
+                if (typeof item.level !== 'undefined') data.level = item.level;
                 if (typeof item.order !== 'undefined') data.order = item.order;
 
                 if (Object.keys(data).length === 0) {
@@ -59,6 +60,7 @@ export class UpdateLessonsBatch {
                         isDemo: true,
                         isVisible: true,
                         videoUrl: true,
+                        level: true,
                         order: true,
                     },
                 });

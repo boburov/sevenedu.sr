@@ -44,6 +44,12 @@ model User {
   coins      Int     @default(0)
   isVerified Boolean @default(false)
 
+  // Streak (har kunlik faollik) — additive, default'li
+  currentStreak  Int       @default(0)
+  longestStreak  Int       @default(0)
+  lastStreakDate DateTime?
+  streakStartedAt DateTime?
+
   provider   String?
   providerId String? @unique
 
@@ -105,6 +111,7 @@ model Lessons {
   id                String           @id @default(uuid())
   title             String
   isDemo            Boolean          @default(false)
+  level             String?          // CEFR daraja: A1, A2, B1, B2, C1, C2
   videoUrl          String
   coursesCategoryId String
   coursesCategory   CoursesCategory  @relation("CategoryLessons", fields: [coursesCategoryId], references: [id], onDelete: Cascade)

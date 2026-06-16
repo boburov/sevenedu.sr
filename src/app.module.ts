@@ -16,6 +16,7 @@ import { DictonaryModule } from './dictonary/dictonary.module';
 import { ActivityModule } from './activity/activity.module';
 import { SentencePuzzleModule } from './sentence-puzzle/sentence-puzzle.module';
 import { AdminModule } from './admin/admin.module';
+import { StreakModule } from './streak/streak.module';
 import confuguration from './config/confuguration';
 
 @Module({
@@ -34,6 +35,7 @@ import confuguration from './config/confuguration';
     ActivityModule,
     SentencePuzzleModule,
     AdminModule,
+    StreakModule,
   ],
   controllers: [AppController],
   providers: [AppService, MailService],

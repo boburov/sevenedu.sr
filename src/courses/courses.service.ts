@@ -64,6 +64,7 @@ export class CoursesService {
           title: lesson.title,
           videoUrl: lesson.videoUrl,
           isDemo: lesson.isDemo,
+          level: lesson.level,
           coursesCategoryId: categoryId,
           order: order++,
         },
@@ -145,6 +146,7 @@ export class CoursesService {
             title: true,
             isDemo: true,
             videoUrl: true,
+            level: true,
             sentencePuzzles: true,
             order: true,
             isVisible: true,
@@ -160,7 +162,7 @@ export class CoursesService {
     createCourse: CreateLessonDto,
     id: string,
   ) {
-    const { title, isDemo } = createCourse;
+    const { title, isDemo, level } = createCourse;
 
     const category = await this.prisma.coursesCategory.findUnique({
       where: { id },
@@ -180,6 +182,7 @@ export class CoursesService {
       data: {
         title,
         isDemo,
+        level,
         videoUrl: createCourse.videoUrl,
         coursesCategoryId: id,
         order: newOrder,

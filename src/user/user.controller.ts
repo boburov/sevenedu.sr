@@ -128,6 +128,13 @@ export class UserController {
     return this.userService.getDailyStats(req.user.id);
   }
 
+  // Reyting — coin bo'yicha top 100 o'quvchi. ':id' route'idan oldin turishi shart.
+  @UseGuards(JwtAuthGuard)
+  @Get('leaderboard')
+  async getLeaderboard(@Req() req: Request & { user: { id: string } }) {
+    return this.userService.getLeaderboard(req.user.id);
+  }
+
   @Post('chat')
   async chatWithAI(
     @Body() body: { lessonId: string; message: string; userId: string },
