@@ -23,9 +23,10 @@ export class Category {
         if (existing)
             throw new HttpException('Bu kategoriya allaqachon mavjud!', 400);
 
-        const uploadedThumbnail = await this.uploadsService.uploadFile(
+        // Yangi kurs thumbnaillari VPS'ga (lokal) yuklanadi, S3'ga emas.
+        const uploadedThumbnail = await this.uploadsService.uploadLocalFile(
             file,
-            'images',
+            'courses',
         );
 
         const newCategory = await this.prisma.coursesCategory.create({

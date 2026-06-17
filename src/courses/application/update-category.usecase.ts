@@ -19,13 +19,13 @@ export class UpdateCategory {
         if (!existingCategory) throw new NotFoundException('Kategoriya topilmadi');
 
         if (file) {
-            const oldUrl = existingCategory.thumbnail;
-            const oldKey = new URL(oldUrl).pathname.slice(1);
-            await this.uploadsService.deleteFile(oldKey);
+            // Eski rasm faqat VPS'dagi (lokal) bo'lsa o'chiriladi; eski S3 URL'larga tegmaymiz.
+            await this.uploadsService.deleteLocalFile(existingCategory.thumbnail);
 
-            const newThumbnailUrl = await this.uploadsService.uploadFile(
+            // Yangi thumbnail VPS'ga (lokal) yuklanadi, S3'ga emas.
+            const newThumbnailUrl = await this.uploadsService.uploadLocalFile(
                 file,
-                'images',
+                'courses',
             );
             dto.thumbnail = newThumbnailUrl;
         }

@@ -399,7 +399,16 @@ export class UserService {
   }
 
   async updateProfilePic(id: string, file: Express.Multer.File) {
-    const imageUrl = await this.uploadService.uploadFile(file, 'images');
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('Foydalanuvchi topilmadi');
+    }
+
+    // Eski rasm faqat VPS'dagi (lokal) bo'lsa o'chiriladi; eski S3 URL'larga tegmaymiz.
+    await this.uploadService.deleteLocalFile(user.profilePic);
+
+    // Yangi pfp VPS'ga (lokal) yuklanadi, S3'ga emas.
+    const imageUrl = await this.uploadService.uploadLocalFile(file, 'avatars');
     return this.prisma.user.update({
       where: { id },
       data: {
@@ -414,9 +423,8 @@ export class UserService {
       throw new Error('User not found');
     }
 
-    if (user.profilePic) {
-      await this.uploadService.deleteFile(user.profilePic);
-    }
+    // Faqat VPS'dagi (lokal) faylni o'chiramiz; eski S3 rasmlarga tegmaymiz.
+    await this.uploadService.deleteLocalFile(user.profilePic);
 
     return this.prisma.user.update({
       where: { id },

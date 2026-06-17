@@ -3,6 +3,9 @@
 /node_modules
 /build
 
+# Lokal (VPS) yuklangan rasmlar — pfp / kurs thumbnaillari
+/uploads
+
 # Logs
 logs
 *.log
@@ -41,6 +44,14 @@ lerna-debug.log*
 .env.test.local
 .env.production.local
 .env.local
+
+# Secrets — hech qachon commit qilinmasin (JWT ed25519 kalitlari)
+/ed25519
+/ed25519.pub
+
+# Database dump'lar (server root). Prisma migration .sql lari saqlanadi (subdir'da).
+/*.sql
+/*.dump
 
 # temp directory
 .temp
