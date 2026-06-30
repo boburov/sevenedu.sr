@@ -5,10 +5,13 @@ import {
   Put,
   Param,
   Body,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { NotificationRecipientDto } from './dto/update-ntf.dto';
+import { JwtAuthGuard } from '../guard/jwt-auth.guard';
 
 @Controller('notifications')
 export class NotificationsController {
@@ -17,6 +20,14 @@ export class NotificationsController {
   @Get()
   async getAll() {
     return await this.notificationsService.getAllNotifications();
+  }
+
+  // Joriy (token bilan kirgan) foydalanuvchining bildirishnomalari — mobil inbox.
+  // E'tibor: `:id` route'idan OLDIN turishi shart, aks holda "me" id sifatida tushadi.
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  async getMine(@Req() req) {
+    return await this.notificationsService.getUserNotifications(req.user.id);
   }
 
   @Post('register-token')

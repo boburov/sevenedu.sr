@@ -32,6 +32,7 @@ import { RemoveCategory } from './application/remove.category.usecase';
 import { UpdateCategory } from './application/update-category.usecase';
 import { UpdateLessonsBatch } from './application/update-lessons-batch.usecase';
 import { UpdateLessonUsecase } from './application/update.lesson.usecase';
+import { GetLessonDownload } from './application/get-download.usecase';
 import { ReorderService } from './scripts/fix-lesson-orders';
 import { FixVideoUrlsDto } from './dto/video-url-fixed.dto';
 import { CreateLessonsBatchDto } from './dto/create-lesson-batch.dto';
@@ -46,6 +47,7 @@ export class CoursesController {
     private updateCategory: UpdateCategory,
     private updateLessonBatch: UpdateLessonsBatch,
     private updateLessonUsecase: UpdateLessonUsecase,
+    private getLessonDownload: GetLessonDownload,
     private reorder: ReorderService
   ) { }
 
@@ -203,6 +205,13 @@ async createLessonsBatch(
   @Get('lessons/:id')
   async getLessonById(@Param('id') id: string) {
     return this.category.getLessonById(id);
+  }
+
+  // Offline yuklab olish uchun progressive video linki (auth + enrollment)
+  @Get('lessons/:id/download')
+  @UseGuards(JwtAuthGuard)
+  async getLessonDownloadLink(@Param('id') id: string, @Req() req) {
+    return this.getLessonDownload.execute(id, req.user);
   }
 
   // edit lessons

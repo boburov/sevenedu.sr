@@ -94,6 +94,26 @@ export class NotificationsService {
     });
   }
 
+  // Foydalanuvchiga tegishli bildirishnomalar (eng yangisi birinchi).
+  // Har bir element o'qilgan/o'qilmagan holatini ham qaytaradi (mobil inbox uchun).
+  async getUserNotifications(userId: string) {
+    const recipients = await this.prisma.notificationRecipient.findMany({
+      where: { userId },
+      include: { notification: true },
+      orderBy: { notification: { createdAt: 'desc' } },
+    });
+
+    return recipients.map((r) => ({
+      id: r.notification.id,
+      recipientId: r.id,
+      title: r.notification.title,
+      message: r.notification.message,
+      isRead: r.isRead,
+      courseId: r.notification.courseId,
+      createdAt: r.notification.createdAt,
+    }));
+  }
+
   async createNotification(dto: CreateNotificationDto) {
     const notification = await this.prisma.notification.create({
       data: {

@@ -113,6 +113,11 @@ model Lessons {
   isDemo            Boolean          @default(false)
   level             String?          // CEFR daraja: A1, A2, B1, B2, C1, C2
   videoUrl          String
+  // ── Offline download (Vimeo) metadata ──
+  vimeoId           String?          // videoUrl'dan bir marta ajratilgan Vimeo ID
+  durationSec       Int?             // video davomiyligi (sekund)
+  sizeBytes         BigInt?          // eng yaxshi progressive fayl hajmi (storage estimate)
+  downloadable      Boolean          @default(false) // Vimeo'da per-video download yoqilganmi
   coursesCategoryId String
   coursesCategory   CoursesCategory  @relation("CategoryLessons", fields: [coursesCategoryId], references: [id], onDelete: Cascade)
   order             Int              @default(autoincrement())
