@@ -123,7 +123,9 @@ export class NotificationsService {
       },
     });
 
-    const allUsers = await this.prisma.user.findMany({ select: { id: true } });
+    const allUsers = await this.prisma.user.findMany({
+      select: { id: true, fcmToken: true },
+    });
 
     await this.prisma.notificationRecipient.createMany({
       data: allUsers.map((user) => ({
@@ -132,6 +134,10 @@ export class NotificationsService {
       })),
       skipDuplicates: true,
     });
+
+    // Push: tokeni bor barcha foydalanuvchilarga yuborish
+    const tokens = allUsers.map((u) => u.fcmToken).filter(Boolean) as string[];
+    await this.firebaseService.sendPushToMany(tokens, dto.title, dto.message);
 
     return notification;
   }
@@ -180,6 +186,15 @@ export class NotificationsService {
       })),
       skipDuplicates: true,
     });
+
+    // Push: shu kursdagi tokeni bor foydalanuvchilarga yuborish
+    const courseUserIds = userCourses.map(({ userId }) => userId);
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: courseUserIds } },
+      select: { fcmToken: true },
+    });
+    const tokens = users.map((u) => u.fcmToken).filter(Boolean) as string[];
+    await this.firebaseService.sendPushToMany(tokens, dto.title, dto.message);
 
     return notification;
   }
