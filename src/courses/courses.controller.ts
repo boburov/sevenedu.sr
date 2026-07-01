@@ -57,6 +57,13 @@ export class CoursesController {
     return this.courseService.getAll();
   }
 
+  // Joriy foydalanuvchining har kurs bo'yicha tugatgan darslari foizi
+  @UseGuards(JwtAuthGuard)
+  @Get('my-progress')
+  async myProgress(@Req() req) {
+    return this.courseService.getMyProgress(req.user.id);
+  }
+
 @Post(':id/lessons/batch')
 async createLessonsBatch(
   @Param('id') id: string,

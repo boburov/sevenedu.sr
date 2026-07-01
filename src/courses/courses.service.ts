@@ -137,6 +137,54 @@ export class CoursesService {
       .map(({ value }) => value);
   }
 
+  // Har bir kurs bo'yicha foydalanuvchining tugatgan darslari foizi.
+  // completed = ko'rilgan (LessonActivity) darslar soni, total = ko'rinadigan darslar.
+  async getMyProgress(userId: string) {
+    // 1) Ko'rinadigan darslar → qaysi kursga tegishli
+    const lessons = await this.prisma.lessons.findMany({
+      where: { isVisible: true },
+      select: { id: true, coursesCategoryId: true },
+    });
+
+    const totalByCourse = new Map<string, number>();
+    const lessonToCourse = new Map<string, string>();
+    for (const l of lessons) {
+      totalByCourse.set(
+        l.coursesCategoryId,
+        (totalByCourse.get(l.coursesCategoryId) ?? 0) + 1,
+      );
+      lessonToCourse.set(l.id, l.coursesCategoryId);
+    }
+
+    // 2) Foydalanuvchi ko'rgan darslar (har dars faqat bir marta)
+    const watched = await this.prisma.lessonActivity.findMany({
+      where: { userId },
+      select: { lessonsId: true },
+      distinct: ['lessonsId'],
+    });
+
+    const completedByCourse = new Map<string, number>();
+    for (const w of watched) {
+      const courseId = lessonToCourse.get(w.lessonsId);
+      if (!courseId) continue; // ko'rinmaydigan/o'chirilgan dars — hisobga olinmaydi
+      completedByCourse.set(
+        courseId,
+        (completedByCourse.get(courseId) ?? 0) + 1,
+      );
+    }
+
+    // 3) Natija — har kurs uchun completed/total/percent
+    return Array.from(totalByCourse.entries()).map(([courseId, total]) => {
+      const completed = Math.min(completedByCourse.get(courseId) ?? 0, total);
+      return {
+        courseId,
+        completed,
+        total,
+        percent: total === 0 ? 0 : Math.round((completed / total) * 100),
+      };
+    });
+  }
+
   async getAll() {
     const courses = await this.prisma.coursesCategory.findMany({
       include: {
