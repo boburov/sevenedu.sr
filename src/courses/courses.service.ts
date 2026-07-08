@@ -10,6 +10,7 @@ import { UploadsService } from '../uploads/uploads.service';
 import { CreateLessonDto } from './dto/create-course.dot';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
 import { UpdateLessonsBatchDto } from './dto/update.dto';
+import { UpsertLevelMetaDto } from './dto/upsert-level-meta.dto';
 import { Dictonary } from '@prisma/client';
 
 @Injectable()
@@ -18,6 +19,47 @@ export class CoursesService {
     private prisma: PrismaService,
     private uploadsService: UploadsService,
   ) { }
+
+  // ── CEFR daraja (modul) meta ─────────────────────────────
+  // Kursning darajalari uchun tahrirlangan nom/tavsiflar ro'yxati.
+  async getCourseLevels(courseId: string) {
+    return this.prisma.courseLevelMeta.findMany({
+      where: { courseId },
+      orderBy: { order: 'asc' },
+    });
+  }
+
+  // Bitta darajaning nom/tavsifini saqlash (bor bo'lsa yangilaydi).
+  async upsertCourseLevel(courseId: string, dto: UpsertLevelMetaDto) {
+    const course = await this.prisma.coursesCategory.findUnique({
+      where: { id: courseId },
+    });
+    if (!course) throw new NotFoundException('Kurs topilmadi');
+
+    return this.prisma.courseLevelMeta.upsert({
+      where: { courseId_level: { courseId, level: dto.level } },
+      update: {
+        title: dto.title,
+        description: dto.description ?? null,
+        order: dto.order ?? 0,
+      },
+      create: {
+        courseId,
+        level: dto.level,
+        title: dto.title,
+        description: dto.description ?? null,
+        order: dto.order ?? 0,
+      },
+    });
+  }
+
+  // Daraja metasini o'chirish (mobile yana qattiq-yozilgan nomga qaytadi).
+  async deleteCourseLevel(courseId: string, level: string) {
+    await this.prisma.courseLevelMeta.deleteMany({
+      where: { courseId, level },
+    });
+    return { message: 'Daraja meta o‘chirildi' };
+  }
 
   async generateVocabularyQuiz(lessonId: string) {
     const words: Dictonary[] = await this.prisma.dictonary.findMany({

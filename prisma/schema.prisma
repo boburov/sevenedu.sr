@@ -81,16 +81,32 @@ model VocabularyTestResult {
 }
 
 model CoursesCategory {
-  id             String           @id @default(uuid())
+  id             String            @id @default(uuid())
   title          String
   shortName      String
   thumbnail      String
   goal           String
-  lessons        Lessons[]        @relation("CategoryLessons")
+  lessons        Lessons[]         @relation("CategoryLessons")
+  levelMetas     CourseLevelMeta[]
   users          UserCourse[]
   notifications  Notification[]
   LessonActivity LessonActivity[]
   certificate    Certificate[]
+}
+
+// Har bir kursning CEFR darajasi (moduli) uchun tahrirlanadigan meta:
+// admin panelda daraja nomi + tavsifini yozadi, mobile shuni ko'rsatadi.
+// Darslar hamon Lessons.level bo'yicha guruhlanadi — bu faqat ko'rinadigan nom.
+model CourseLevelMeta {
+  id          String          @id @default(uuid())
+  courseId    String
+  level       String          // CEFR: A1, A2, B1, B2, C1, C2
+  title       String          // modul nomi (masalan "Boshlang'ich asoslar")
+  description String?         // ixtiyoriy qisqa tavsif
+  order       Int             @default(0)
+  course      CoursesCategory @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, level])
 }
 
 model UserCourse {

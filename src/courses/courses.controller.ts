@@ -36,6 +36,7 @@ import { GetLessonDownload } from './application/get-download.usecase';
 import { ReorderService } from './scripts/fix-lesson-orders';
 import { FixVideoUrlsDto } from './dto/video-url-fixed.dto';
 import { CreateLessonsBatchDto } from './dto/create-lesson-batch.dto';
+import { UpsertLevelMetaDto } from './dto/upsert-level-meta.dto';
 
 @Controller('courses')
 export class CoursesController {
@@ -173,6 +174,31 @@ async createLessonsBatch(
   @Get('category/:id')
   async getCategory(@Param('id') id: string) {
     return this.category.getcategory(id);
+  }
+
+  // ── CEFR daraja (modul) meta ─────────────────────────────
+  // Kursning daraja nomlari/tavsiflari (mobile + admin o'qiydi)
+  @Get(':id/levels')
+  async getCourseLevels(@Param('id') id: string) {
+    return this.courseService.getCourseLevels(id);
+  }
+
+  // Bir darajaning nom/tavsifini saqlash (admin)
+  @Put(':id/levels')
+  async upsertCourseLevel(
+    @Param('id') id: string,
+    @Body() body: UpsertLevelMetaDto,
+  ) {
+    return this.courseService.upsertCourseLevel(id, body);
+  }
+
+  // Daraja metasini o'chirish (admin)
+  @Delete(':id/levels/:level')
+  async deleteCourseLevel(
+    @Param('id') id: string,
+    @Param('level') level: string,
+  ) {
+    return this.courseService.deleteCourseLevel(id, level);
   }
 
   // delete category
