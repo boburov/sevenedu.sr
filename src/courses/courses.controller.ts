@@ -26,6 +26,10 @@ import { UpdateLessonDto } from './dto/update-lesson.dto';
 import { SaveVocabularyResultDto } from './dto/save-vocabulary-result.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../guard/jwt-auth.guard';
+import { AdminAuthGuard } from '../guard/admin-auth.guard';
+import { PermissionsGuard } from '../guard/permissions.guard';
+import { RequirePermission } from '../guard/require-permission.decorator';
+import { InsertLessonsDto } from './dto/insert-lessons.dto';
 import { UpdateLessonsBatchDto } from './dto/update.dto';
 import { Category } from './application/create.category.usecase';
 import { RemoveCategory } from './application/remove.category.usecase';
@@ -37,6 +41,8 @@ import { ReorderService } from './scripts/fix-lesson-orders';
 import { FixVideoUrlsDto } from './dto/video-url-fixed.dto';
 import { CreateLessonsBatchDto } from './dto/create-lesson-batch.dto';
 import { UpsertLevelMetaDto } from './dto/upsert-level-meta.dto';
+import { CreateUploadTicketDto } from './dto/create-upload-ticket.dto';
+import { VimeoService } from '../vimeo/vimeo.service';
 
 @Controller('courses')
 export class CoursesController {
@@ -49,7 +55,8 @@ export class CoursesController {
     private updateLessonBatch: UpdateLessonsBatch,
     private updateLessonUsecase: UpdateLessonUsecase,
     private getLessonDownload: GetLessonDownload,
-    private reorder: ReorderService
+    private reorder: ReorderService,
+    private vimeo: VimeoService,
   ) { }
 
   // GET All Courses
@@ -66,14 +73,29 @@ export class CoursesController {
   }
 
 @Post(':id/lessons/batch')
+@UseGuards(AdminAuthGuard, PermissionsGuard)
+@RequirePermission('lessons.create')
 async createLessonsBatch(
   @Param('id') id: string,
   @Body() body: CreateLessonsBatchDto,
 ) {
   return this.courseService.createLessonsBatch(body.lessons, id);
 }
-  
+
+  // Darslarni ikki dars orasiga (yoki boshiga) qo'shish
+  @Post(':id/lessons/insert')
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('lessons.create')
+  async insertLessons(
+    @Param('id') id: string,
+    @Body() body: InsertLessonsDto,
+  ) {
+    return this.courseService.insertLessons(id, body.afterLessonId, body.lessons);
+  }
+
   @Patch('category/:id/thumbnail')
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('courses.edit')
   async updateThumbnail(
     @Param('id') id: string,
     @Body() body: { thumbnail: string },
@@ -87,6 +109,8 @@ async createLessonsBatch(
 
   //   all invinsible lessons
   @Delete('delete/all/invisible-lessons')
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('lessons.delete')
   @HttpCode(HttpStatus.OK)
   async deleteAllInvisibleLessons() {
     return this.courseService.deleteAllInvisibleLessons();
@@ -94,6 +118,8 @@ async createLessonsBatch(
 
   // courses.controller.ts
   @Patch('lessons/batch-delete')
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('lessons.delete')
   @HttpCode(HttpStatus.OK)
   async batchDeleteLessons(@Body() body: { lessonIds: string[] }) {
     if (!Array.isArray(body.lessonIds) || body.lessonIds.length === 0) {
@@ -158,6 +184,8 @@ async createLessonsBatch(
   // Category Section
   // this is a create category section
   @Post('create')
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('courses.create')
   @UseInterceptors(FileInterceptor('file'))
   createCategory(
     @Body() dto: CreateCategoryCourseDto,
@@ -185,6 +213,8 @@ async createLessonsBatch(
 
   // Bir darajaning nom/tavsifini saqlash (admin)
   @Put(':id/levels')
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('courses.edit')
   async upsertCourseLevel(
     @Param('id') id: string,
     @Body() body: UpsertLevelMetaDto,
@@ -194,6 +224,8 @@ async createLessonsBatch(
 
   // Daraja metasini o'chirish (admin)
   @Delete(':id/levels/:level')
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('courses.edit')
   async deleteCourseLevel(
     @Param('id') id: string,
     @Param('level') level: string,
@@ -203,6 +235,8 @@ async createLessonsBatch(
 
   // delete category
   @Delete(':id')
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('courses.delete')
   async deleteCategory(@Param('id') id: string, @Res() res: Response) {
     try {
       await this.removeCategory.remove(id);
@@ -214,6 +248,8 @@ async createLessonsBatch(
 
   // edit category
   @Patch('category/:id')
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('courses.edit')
   @UseInterceptors(FileInterceptor('file'))
   async update(
     @Param('id') id: string,
@@ -225,8 +261,20 @@ async createLessonsBatch(
   // end of category endpoint
 
   // Lessons Section
-  // create lesson section 
+  // Vimeo'ga to'g'ridan-to'g'ri (brauzerdan) yuklash uchun tus upload ticket ochadi.
+  // Fayl serverdan o'tmaydi — admin brauzeri qaytgan uploadLink'ka yuklaydi,
+  // so'ng natijaviy videoUrl bilan oddiy dars yaratiladi.
+  @Post('vimeo/upload-ticket')
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('lessons.create')
+  async createVimeoUploadTicket(@Body() body: CreateUploadTicketDto) {
+    return this.vimeo.createUploadTicket(body.size, body.name);
+  }
+
+  // create lesson section
   @Post(':id/lesson')
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('lessons.create')
   async createNewLesson(
     @Param('id') id: string,
     @Body() body: CreateLessonDto,
@@ -249,6 +297,8 @@ async createLessonsBatch(
 
   // edit lessons
   @Patch('lessons/:id')
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('lessons.edit')
   @UseInterceptors(FileInterceptor('video'))
   async updateLesson(
     @Param('id') id: string,
@@ -274,18 +324,24 @@ async createLessonsBatch(
 
   // delete lesson
   @Patch('lesson/:id')
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('lessons.delete')
   async deleteLEsson(@Param('id') id: string) {
     return this.courseService.deleteLesson(id);
   }
 
   // esimdan chiqib qoldi nima ekanligi
   @Patch('lessons/batch')
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('lessons.edit')
   async updateLessonsBatch(@Body() body: UpdateLessonsBatchDto) {
     return this.updateLessonBatch.update(body);
   }
 
   // fix video url
   @Post('fix/video-urls')
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('lessons.edit')
   async fixVideoUrls(@Body() body: any) {
     console.log('BODY:', body); // DEBUG
 
@@ -297,6 +353,8 @@ async createLessonsBatch(
 
   //  reorder lessons
   @Put(':categoryId/reorder-lessons')
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('lessons.edit')
   async reorderLessons(
     @Param('categoryId') categoryId: string,
     @Body()

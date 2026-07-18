@@ -25,21 +25,6 @@ export class AuthController {
     return this.authService.adminLogin(dto);
   }
 
-  // ⚠️ Diagnostika uchun vaqtinchalik. Ishlatib bo'lgach o'chiring.
-  @Get('admin/env-check')
-  adminEnvCheck() {
-    const email = process.env.ADMIN_EMAIL;
-    const pass = process.env.ADMIN_PASSWORD;
-    return {
-      hasAdminEmail: !!email,
-      hasAdminPassword: !!pass,
-      emailPreview: email ? email.slice(0, 3) + '***' : null,
-      passwordLength: pass ? pass.length : 0,
-      jwtSecretSet: !!process.env.JWT_SECRET,
-      nodeEnv: process.env.NODE_ENV || null,
-    };
-  }
-
   @Post('register')
   async register(@Body() dto: CreateUserDto) {
     return this.authService.register(dto);

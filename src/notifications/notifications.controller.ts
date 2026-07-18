@@ -12,6 +12,9 @@ import { NotificationsService } from './notifications.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { NotificationRecipientDto } from './dto/update-ntf.dto';
 import { JwtAuthGuard } from '../guard/jwt-auth.guard';
+import { AdminAuthGuard } from '../guard/admin-auth.guard';
+import { PermissionsGuard } from '../guard/permissions.guard';
+import { RequirePermission } from '../guard/require-permission.decorator';
 
 @Controller('notifications')
 export class NotificationsController {
@@ -43,6 +46,8 @@ export class NotificationsController {
     return await this.notificationsService.getNotificationById(id);
   }
 
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('notifications.create')
   @Post('send/:id')
   async sendNotificationToUser(
     @Param('id') id: string,
@@ -51,6 +56,8 @@ export class NotificationsController {
     return await this.notificationsService.createNotificationForCourseUsers(id, dto);
   }
 
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('notifications.create')
   @Post('create')
   async create(@Body() dto: CreateNotificationDto & {
     userId?: string;
@@ -73,6 +80,8 @@ export class NotificationsController {
     }
   }
 
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('notifications.create')
   @Put(':id')
   async updateNotification(@Param('id') id: string, @Body() dto: Partial<NotificationRecipientDto>) {
     return await this.notificationsService.updateNotificationRecipient(id, dto);

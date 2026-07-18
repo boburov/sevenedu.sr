@@ -24,62 +24,80 @@ export class AuthService {
     return `u_${googleId}`.slice(0, 30);
   }
 
-  async adminLogin(dto: LoginAdminDto) {
+  /**
+   * Agar hali birorta admin bo'lmasa, .env dagi ADMIN_* dan birinchi OWNER'ni yaratadi.
+   * Bu ownerning hozirgi login/paroli DB migratsiyadan keyin ham ishlashini ta'minlaydi.
+   */
+  private async ensureOwnerBootstrap() {
+    const count = await this.prisma.adminUser.count();
+    if (count > 0) return;
+
     const stripQuotes = (v?: string) =>
       (v ?? '').trim().replace(/^['"]|['"]$/g, '').trim();
 
-    const adminEmail = stripQuotes(
+    const email = stripQuotes(
       this.configService.get<string>('ADMIN_EMAIL') ?? process.env.ADMIN_EMAIL,
-    );
-    const adminPlainPassword = stripQuotes(
+    ).toLowerCase();
+    const plainPassword = stripQuotes(
       this.configService.get<string>('ADMIN_PASSWORD') ??
         process.env.ADMIN_PASSWORD,
     );
-    const adminName =
-      stripQuotes(this.configService.get<string>('ADMIN_NAME')) || 'Admin';
-    const adminSurname =
-      stripQuotes(this.configService.get<string>('ADMIN_SURNAME')) || 'Admin';
-    const adminRole =
-      stripQuotes(this.configService.get<string>('ADMIN_ROLE')) ||
-      'SUPER_ADMIN';
+    const name =
+      stripQuotes(this.configService.get<string>('ADMIN_NAME')) || 'Owner';
+    const surname =
+      stripQuotes(this.configService.get<string>('ADMIN_SURNAME')) || '';
 
-    if (!adminEmail || !adminPlainPassword) {
-      console.error('[adminLogin] ADMIN_EMAIL yoki ADMIN_PASSWORD .env da yo\'q', {
-        hasEmail: !!adminEmail,
-        hasPassword: !!adminPlainPassword,
-      });
-      throw new UnauthorizedException(
-        'Admin sozlamalari .env faylida topilmadi',
+    if (!email || !plainPassword) {
+      console.error(
+        "[ensureOwnerBootstrap] ADMIN_EMAIL/ADMIN_PASSWORD .env da yo'q — owner yaratilmadi",
       );
+      return;
     }
+
+    const hashed = await bcrypt.hash(plainPassword, 10);
+    await this.prisma.adminUser.create({
+      data: {
+        name,
+        surname: surname || null,
+        email,
+        password: hashed,
+        role: 'OWNER',
+        permissions: [],
+        isActive: true,
+      },
+    });
+    console.log('[ensureOwnerBootstrap] Birinchi OWNER yaratildi:', email);
+  }
+
+  async adminLogin(dto: LoginAdminDto) {
+    // Birinchi kirishda .env dan owner'ni DB ga ko'chiramiz.
+    await this.ensureOwnerBootstrap();
 
     const inputEmail = (dto.email ?? '').trim().toLowerCase();
     const inputPassword = (dto.password ?? '').trim();
 
-    if (inputEmail !== adminEmail.toLowerCase()) {
-      console.warn('[adminLogin] email noto\'g\'ri', {
-        got: inputEmail,
-        expected: adminEmail.toLowerCase(),
-      });
-      throw new UnauthorizedException('Email yoki parol noto\'g\'ri');
+    const admin = await this.prisma.adminUser.findUnique({
+      where: { email: inputEmail },
+    });
+
+    if (!admin) {
+      throw new UnauthorizedException("Email yoki parol noto'g'ri");
+    }
+    if (!admin.isActive) {
+      throw new UnauthorizedException('Akkaunt bloklangan');
     }
 
-    if (inputPassword !== adminPlainPassword) {
-      console.warn('[adminLogin] parol noto\'g\'ri', {
-        gotLength: inputPassword.length,
-        expectedLength: adminPlainPassword.length,
-      });
-      throw new UnauthorizedException('Email yoki parol noto\'g\'ri');
+    const ok = await bcrypt.compare(inputPassword, admin.password);
+    if (!ok) {
+      throw new UnauthorizedException("Email yoki parol noto'g'ri");
     }
 
-    // JWT token yaratish
     const payload = {
-      sub: 'admin',
-      email: adminEmail,
-      role: adminRole,
+      sub: admin.id,
+      adminId: admin.id,
+      email: admin.email,
+      role: admin.role,
       isAdmin: true,
-      name: adminName,
-      surname: adminSurname,
     };
 
     const token = this.jwt.sign(payload, {
@@ -90,11 +108,12 @@ export class AuthService {
       success: true,
       token,
       user: {
-        id: 'admin',
-        name: adminName,
-        surname: adminSurname,
-        email: adminEmail,
-        role: adminRole,
+        id: admin.id,
+        name: admin.name,
+        surname: admin.surname,
+        email: admin.email,
+        role: admin.role,
+        permissions: admin.permissions,
         isAuthenticated: true,
       },
     };

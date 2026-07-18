@@ -10,4 +10,9 @@ export default () => ({
   // Saqlangan rasm uchun to'liq URL'ning bazasi (eski S3 URL'lar kabi absolyut bo'lishi uchun).
   publicBaseUrl: (process.env.PUBLIC_BASE_URL || 'https://api.sevenedu.org').replace(/\/+$/, ''),
  },
+ // Do'kon mahsulot rasmlari Telegram guruhda saqlanadi.
+ telegram: {
+  botToken: process.env.TELEGRAM_BOT_TOKEN || '',
+  chatId: process.env.TELEGRAM_CHAT_ID || '',
+ },
 });

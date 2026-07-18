@@ -15,12 +15,31 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: any) {
     if (payload?.isAdmin) {
+      // Ruxsatlarni JWT dan emas, DB dan o'qiymiz — o'zgarish darhol kuchga kiradi.
+      const admin = await this.prisma.adminUser.findUnique({
+        where: { id: payload.adminId },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          permissions: true,
+          name: true,
+          surname: true,
+          isActive: true,
+        },
+      });
+
+      if (!admin || !admin.isActive) {
+        throw new UnauthorizedException('Admin bloklangan yoki topilmadi');
+      }
+
       return {
-        id: 'admin',
-        email: payload.email,
-        role: payload.role || 'SUPER_ADMIN',
-        name: payload.name,
-        surname: payload.surname,
+        id: admin.id,
+        email: admin.email,
+        role: admin.role,
+        permissions: admin.permissions,
+        name: admin.name,
+        surname: admin.surname,
         isAdmin: true,
       };
     }

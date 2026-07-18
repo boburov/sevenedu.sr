@@ -23,6 +23,25 @@ enum REGISTER_TYPE {
   REGULAR
 }
 
+enum AdminRole {
+  OWNER // to'liq huquq, xodimlarni boshqaradi
+  STAFF // faqat berilgan ruxsatlar
+}
+
+// Admin panel foydalanuvchilari (owner + xodimlar). Oddiy `User` bilan aralashmaydi.
+model AdminUser {
+  id          String    @id @default(uuid())
+  name        String
+  surname     String?
+  email       String    @unique
+  password    String // bcrypt hash
+  role        AdminRole @default(STAFF)
+  permissions String[]  @default([]) // masalan: ["lessons.create","lessons.edit"]
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
 model User {
   id            String        @id @default(uuid())
   name          String?
@@ -66,6 +85,36 @@ model User {
   lessonAIUsage        LessonAIUsage[]
   VocabularyTestResult VocabularyTestResult[]
   certificate          Certificate[]
+  purchases            Purchase[]
+}
+
+// Do'kon mahsuloti — narxi tangada. Rasm Telegram guruhda saqlanadi
+// (telegramFileId), mobil/admin uni server proxy orqali oladi.
+model Product {
+  id             String   @id @default(uuid())
+  name           String
+  price          Int      @default(0)
+  telegramFileId String
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  purchases Purchase[]
+}
+
+// Foydalanuvchi xaridi — tanga evaziga (savatchasiz, to'g'ridan-to'g'ri).
+model Purchase {
+  id         String   @id @default(uuid())
+  userId     String
+  productId  String
+  coinsSpent Int
+  createdAt  DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([productId])
 }
 
 model VocabularyTestResult {
@@ -92,6 +141,25 @@ model CoursesCategory {
   notifications  Notification[]
   LessonActivity LessonActivity[]
   certificate    Certificate[]
+  movies         Movie[]
+}
+
+// Kurs kinolari — darslar tugagach ko'riladigan filmlar. Video Vimeo havolasi,
+// poster VPS /uploads da. Har kursda ~10-20 ta.
+model Movie {
+  id          String   @id @default(uuid())
+  courseId    String
+  title       String
+  description String?
+  posterUrl   String   @default("")
+  videoUrl    String
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  course CoursesCategory @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId])
 }
 
 // Har bir kursning CEFR darajasi (moduli) uchun tahrirlanadigan meta:

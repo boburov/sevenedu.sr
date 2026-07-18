@@ -20,6 +20,9 @@ import { UserService } from './user.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../guard/jwt-auth.guard';
+import { AdminAuthGuard } from '../guard/admin-auth.guard';
+import { PermissionsGuard } from '../guard/permissions.guard';
+import { RequirePermission } from '../guard/require-permission.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('user')
@@ -29,11 +32,15 @@ export class UserController {
     private prisma: PrismaService,
   ) {}
 
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('users.view')
   @Get('all')
   async allUser() {
     return this.userService.allUser();
   }
 
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('enrollment.create')
   @Post('assign-course')
   async assignCourseToUser(
     @Body()
@@ -50,12 +57,16 @@ export class UserController {
     );
   }
 
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('users.delete')
   @Post('delete')
   async deleteUser(@Body() body: { id: string }) {
     // Object qabul qilish kerak
     return this.userService.deleteUser(body.id);
   }
 
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('users.create')
   @Post('create')
   async createUser(
     @Body()

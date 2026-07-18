@@ -282,6 +282,102 @@ export class CoursesService {
     return newCourse;
   }
 
+  /**
+   * Darslarni ikki darsning orasiga (yoki boshiga) qo'shadi.
+   * afterLessonId=null/undefined => boshiga; aks holda shu darsdan keyin.
+   * Ko'rinadigan darslar `order` bo'yicha qayta ketma-ketlanadi (reorder pattern).
+   */
+  async insertLessons(
+    categoryId: string,
+    afterLessonId: string | null | undefined,
+    lessonsData: CreateLessonDto[],
+  ) {
+    if (!Array.isArray(lessonsData) || lessonsData.length === 0) {
+      throw new BadRequestException("Kamida bitta dars kerak");
+    }
+
+    const category = await this.prisma.coursesCategory.findUnique({
+      where: { id: categoryId },
+      include: {
+        lessons: {
+          where: { isVisible: true },
+          orderBy: { order: 'asc' },
+        },
+      },
+    });
+    if (!category) throw new HttpException('Category Not Found', 404);
+
+    const existing = category.lessons;
+
+    // Qo'shish pozitsiyasini aniqlash
+    let insertIndex: number;
+    if (!afterLessonId) {
+      insertIndex = 0; // boshiga
+    } else {
+      const idx = existing.findIndex((l) => l.id === afterLessonId);
+      if (idx === -1) {
+        throw new NotFoundException(`Dars topilmadi: ${afterLessonId}`);
+      }
+      insertIndex = idx + 1; // shu darsdan keyin
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1) Mavjud ko'rinadigan darslar order'ini vaqtincha manfiy qilamiz (unique konfliktdan qochish)
+      await Promise.all(
+        existing.map((lesson) =>
+          tx.lessons.update({
+            where: { id: lesson.id },
+            data: { order: -(lesson.order) },
+          }),
+        ),
+      );
+
+      // 2) Yangi darslarni vaqtincha yirik manfiy order bilan yaratamiz
+      const created: Array<{ id: string }> = [];
+      for (let i = 0; i < lessonsData.length; i++) {
+        const d = lessonsData[i];
+        const row = await tx.lessons.create({
+          data: {
+            title: d.title,
+            isDemo: d.isDemo ?? false,
+            level: d.level,
+            videoUrl: d.videoUrl,
+            coursesCategoryId: categoryId,
+            order: -(1_000_000 + i),
+          },
+        });
+        created.push(row);
+      }
+
+      // 3) Yakuniy tartib: mavjudlar + yangilar kerakli joyga qo'yiladi
+      const finalOrder = [
+        ...existing.slice(0, insertIndex),
+        ...created,
+        ...existing.slice(insertIndex),
+      ];
+
+      // 4) Ketma-ket order (1..N) qayta yoziladi
+      await Promise.all(
+        finalOrder.map((lesson, index) =>
+          tx.lessons.update({
+            where: { id: lesson.id },
+            data: { order: index + 1 },
+          }),
+        ),
+      );
+
+      return tx.coursesCategory.findUnique({
+        where: { id: categoryId },
+        include: {
+          lessons: {
+            where: { isVisible: true },
+            orderBy: { order: 'asc' },
+          },
+        },
+      });
+    });
+  }
+
   // courses.service.ts
   async batchDeleteLessons(lessonIds: string[]) {
     const result = await this.prisma.lessons.deleteMany({

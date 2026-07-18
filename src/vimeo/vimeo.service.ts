@@ -1,5 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import axios from 'axios';
+
+export interface VimeoUploadTicket {
+  vimeoId: string; // yangi videoning raqamli IDsi
+  uploadLink: string; // brauzer tus orqali fayl bytelarini PATCH qiladigan endpoint
+  videoLink: string; // lesson.videoUrl sifatida saqlanadigan kanonik havola (unlisted bo'lsa hash bilan)
+}
 
 export interface VimeoDownloadInfo {
   url: string; // to'g'ridan-to'g'ri yuklab olinadigan progressive MP4 URL (signed, qisqa muddatli)
@@ -56,6 +67,77 @@ export class VimeoService {
       // URL emas — oxirgi raqamli bo'lakni qidir
       const m = videoUrlOrId.match(/(\d{6,})/);
       return m ? m[1] : null;
+    }
+  }
+
+  /**
+   * Vimeo'da yangi bo'sh video yaratadi va tus (resumable) upload endpoint'ini
+   * qaytaradi. Faylning o'zi serverdan o'tmaydi — admin brauzeri to'g'ridan-to'g'ri
+   * `uploadLink`ka tus protokoli bilan yuklaydi. Token'da `upload` + `edit`
+   * scope bo'lishi shart, aks holda Vimeo 401/403 qaytaradi.
+   *
+   * @param sizeBytes yuklanadigan faylning aniq hajmi (tus uchun majburiy)
+   * @param name video nomi (odatda dars nomi)
+   */
+  async createUploadTicket(
+    sizeBytes: number,
+    name?: string,
+  ): Promise<VimeoUploadTicket> {
+    if (!this.token) {
+      throw new ServiceUnavailableException(
+        'VIMEO_ACCESS_TOKEN sozlanmagan — .env ni tekshiring',
+      );
+    }
+    if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) {
+      throw new BadRequestException("Fayl hajmi (size) noto'g'ri");
+    }
+
+    try {
+      const res = await axios.post(
+        `${this.api}/me/videos`,
+        {
+          upload: { approach: 'tus', size: String(Math.round(sizeBytes)) },
+          name: (name || 'Dars videosi').slice(0, 128),
+          // unlisted: Vimeo'da qidiruvda chiqmaydi, lekin havola/embed orqali ochiladi.
+          // embed public — mobil ilova va admin iframe pleyerlari uchun.
+          // download true — offline yuklab olish funksiyasi ishlashi uchun.
+          privacy: { view: 'unlisted', embed: 'public', download: true },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/vnd.vimeo.*+json;version=3.4',
+          },
+          timeout: 20000,
+        },
+      );
+
+      const data = res.data || {};
+      const uploadLink: string | undefined = data.upload?.upload_link;
+      const vimeoId = this.extractVimeoId(data.uri || data.link || '');
+      const videoLink: string =
+        data.link || (vimeoId ? `https://vimeo.com/${vimeoId}` : '');
+
+      if (!uploadLink || !vimeoId) {
+        this.logger.error(
+          `Vimeo javobi kutilmagan: ${JSON.stringify(data).slice(0, 300)}`,
+        );
+        throw new Error('Vimeo upload_link/id qaytarmadi');
+      }
+
+      return { vimeoId, uploadLink, videoLink };
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      const vimeoMsg =
+        err?.response?.data?.error ||
+        err?.response?.data?.developer_message ||
+        err?.message;
+      this.logger.error(`Vimeo upload ticket xatosi: ${vimeoMsg}`);
+      throw new ServiceUnavailableException(
+        `Vimeo'da upload boshlab bo'lmadi: ${vimeoMsg || 'nomaʼlum xato'}. ` +
+          "Token'da `upload` va `edit` scope borligini tekshiring.",
+      );
     }
   }
 

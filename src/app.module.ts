@@ -17,6 +17,10 @@ import { ActivityModule } from './activity/activity.module';
 import { SentencePuzzleModule } from './sentence-puzzle/sentence-puzzle.module';
 import { AdminModule } from './admin/admin.module';
 import { StreakModule } from './streak/streak.module';
+import { ShopModule } from './shop/shop.module';
+import { GamesModule } from './games/games.module';
+import { MoviesModule } from './movies/movies.module';
+import { StaffModule } from './staff/staff.module';
 import confuguration from './config/confuguration';
 
 @Module({
@@ -36,6 +40,10 @@ import confuguration from './config/confuguration';
     SentencePuzzleModule,
     AdminModule,
     StreakModule,
+    ShopModule,
+    GamesModule,
+    MoviesModule,
+    StaffModule,
   ],
   controllers: [AppController],
   providers: [AppService, MailService],
