@@ -12,6 +12,21 @@ export interface VimeoUploadTicket {
   videoLink: string; // lesson.videoUrl sifatida saqlanadigan kanonik havola (unlisted bo'lsa hash bilan)
 }
 
+export interface VimeoFolderInfo {
+  id: string;
+  name: string;
+  count: number | null; // papkadagi elementlar soni
+}
+
+export interface VimeoLibraryVideo {
+  id: string;
+  name: string;
+  link: string; // vimeo.com/<id> — lesson videoUrl sifatida ishlatiladi
+  durationSec: number | null;
+  thumb: string | null; // kichik oldindan ko'rish rasmi
+  view: string | null; // privacy: anybody | unlisted | ...
+}
+
 export interface VimeoDownloadInfo {
   url: string; // to'g'ridan-to'g'ri yuklab olinadigan progressive MP4 URL (signed, qisqa muddatli)
   sizeBytes: number | null;
@@ -137,6 +152,114 @@ export class VimeoService {
       throw new ServiceUnavailableException(
         `Vimeo'da upload boshlab bo'lmadi: ${vimeoMsg || 'nomaʼlum xato'}. ` +
           "Token'da `upload` va `edit` scope borligini tekshiring.",
+      );
+    }
+  }
+
+  private authHeaders() {
+    return {
+      Authorization: `Bearer ${this.token}`,
+      Accept: 'application/vnd.vimeo.*+json;version=3.4',
+    };
+  }
+
+  private idFromUri(uri?: string): string {
+    if (!uri) return '';
+    // "/videos/1211013529" yoki "/videos/1211013529:hash" -> "1211013529"
+    const last = uri.split('/').filter(Boolean).pop() || '';
+    return last.split(':')[0];
+  }
+
+  /**
+   * Admin kutubxonasi uchun: foydalanuvchi Vimeo papkalari ro'yxati.
+   * "My library" kabi bo'sh tizim papkalari ham qaytadi — frontendda saralanadi.
+   */
+  async listFolders(): Promise<VimeoFolderInfo[]> {
+    if (!this.token) {
+      throw new ServiceUnavailableException('VIMEO_ACCESS_TOKEN sozlanmagan');
+    }
+    try {
+      const res = await axios.get(`${this.api}/me/folders`, {
+        params: {
+          fields: 'uri,name,metadata.connections.items.total',
+          per_page: 100,
+          sort: 'date',
+          direction: 'asc',
+        },
+        headers: this.authHeaders(),
+        timeout: 15000,
+      });
+      const data = Array.isArray(res.data?.data) ? res.data.data : [];
+      return data.map(
+        (f: any): VimeoFolderInfo => ({
+          id: this.idFromUri(f.uri),
+          name: f.name || '(nomsiz)',
+          count: f.metadata?.connections?.items?.total ?? null,
+        }),
+      );
+    } catch (err) {
+      this.logger.error(`Vimeo papkalar xatosi: ${err?.message}`);
+      throw new ServiceUnavailableException('Vimeo papkalarni olishda xatolik');
+    }
+  }
+
+  /**
+   * Bitta papkadagi videolar (bir sahifada 100 tagacha).
+   * page — 1 dan boshlanadi; hasNext keyingi sahifa borligini bildiradi.
+   */
+  async listFolderVideos(
+    folderId: string,
+    page = 1,
+  ): Promise<{ videos: VimeoLibraryVideo[]; total: number; hasNext: boolean }> {
+    if (!this.token) {
+      throw new ServiceUnavailableException('VIMEO_ACCESS_TOKEN sozlanmagan');
+    }
+    if (!/^\d+$/.test(String(folderId))) {
+      throw new BadRequestException("folderId noto'g'ri");
+    }
+    try {
+      const res = await axios.get(
+        `${this.api}/me/folders/${folderId}/videos`,
+        {
+          params: {
+            fields:
+              'uri,name,link,duration,privacy.view,pictures.sizes.link',
+            per_page: 100,
+            page: Math.max(1, page),
+            sort: 'alphabetical',
+            direction: 'asc',
+          },
+          headers: this.authHeaders(),
+          timeout: 20000,
+        },
+      );
+      const data = Array.isArray(res.data?.data) ? res.data.data : [];
+      const videos = data.map((v: any): VimeoLibraryVideo => {
+        const sizes: any[] = v.pictures?.sizes || [];
+        // ~295px kenglikdagi thumbnailni tanlaymiz (grid uchun yetarli)
+        const pic =
+          sizes.find((s) => s.width >= 200 && s.width <= 320) ||
+          sizes[Math.min(2, sizes.length - 1)] ||
+          sizes[0];
+        return {
+          id: this.idFromUri(v.uri),
+          name: v.name || '(nomsiz)',
+          link: v.link || (v.uri ? `https://vimeo.com${v.uri}` : ''),
+          durationSec: typeof v.duration === 'number' ? v.duration : null,
+          thumb: pic?.link || null,
+          view: v.privacy?.view || null,
+        };
+      });
+      return {
+        videos,
+        total: res.data?.total ?? videos.length,
+        hasNext: !!res.data?.paging?.next,
+      };
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      this.logger.error(`Vimeo papka videolari xatosi: ${err?.message}`);
+      throw new ServiceUnavailableException(
+        'Vimeo papka videolarini olishda xatolik',
       );
     }
   }

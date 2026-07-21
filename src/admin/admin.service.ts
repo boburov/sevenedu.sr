@@ -10,6 +10,8 @@ export class AdminService {
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const sevenDaysAgo = new Date(startOfToday.getTime() - 6 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(startOfToday.getTime() - 29 * 24 * 60 * 60 * 1000);
+    // Oxirgi 12 kalendar oy (joriy oy ham kiradi) — oylik sotuvlar uchun
+    const twelveMonthsStart = new Date(now.getFullYear(), now.getMonth() - 11, 1);
 
     const [
       totalUsers,
@@ -43,6 +45,7 @@ export class AdminService {
       recentCertificates,
       payingUsersRaw,
       salesByCourseRaw,
+      salesByMonthRaw,
     ] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.user.count({ where: { isVerified: true } }),
@@ -123,7 +126,56 @@ export class AdminService {
         where: { subscription: { not: 'FREE' } },
         _count: { courseId: true },
       }),
+      // Oylik sotuvlar: oxirgi 12 oydagi pulli obunalar (sana + turi)
+      this.prisma.userCourse.findMany({
+        where: {
+          subscription: { not: 'FREE' },
+          joinedAt: { gte: twelveMonthsStart },
+        },
+        select: { subscription: true, joinedAt: true },
+      }),
     ]);
+
+    // ── Oylik sotuvlar (oxirgi 12 kalendar oy) ──────────────────
+    const UZ_MONTHS = [
+      'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
+      'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr',
+    ];
+    const monthBuckets: {
+      key: string;
+      label: string;
+      monthly: number;
+      fullCharge: number;
+    }[] = [];
+    const monthIndex: Record<string, number> = {};
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      monthIndex[key] = monthBuckets.length;
+      monthBuckets.push({
+        key,
+        label: `${UZ_MONTHS[d.getMonth()]} ${d.getFullYear()}`,
+        monthly: 0,
+        fullCharge: 0,
+      });
+    }
+    for (const r of salesByMonthRaw) {
+      const d = new Date(r.joinedAt);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const idx = monthIndex[key];
+      if (idx === undefined) continue;
+      if (r.subscription === 'MONTHLY') monthBuckets[idx].monthly += 1;
+      else if (r.subscription === 'FULL_CHARGE') monthBuckets[idx].fullCharge += 1;
+    }
+    const salesByMonth = monthBuckets.map((m) => ({
+      month: m.key,
+      label: m.label,
+      monthly: m.monthly,
+      fullCharge: m.fullCharge,
+      total: m.monthly + m.fullCharge,
+    }));
+    // Joriy kalendar oy — oxirgi bucket
+    const currentMonthSales = salesByMonth[salesByMonth.length - 1];
 
     const buckets: Record<string, number> = {};
     for (let i = 29; i >= 0; i--) {
@@ -230,6 +282,13 @@ export class AdminService {
         monthly: monthlySubs,
         fullCharge: fullChargeSubs,
         byCourse: salesByCourse,
+        // Joriy kalendar oy sotuvlari ("bu oy") — rolling 30 kun emas
+        thisMonth: {
+          label: currentMonthSales.label,
+          monthly: currentMonthSales.monthly,
+          fullCharge: currentMonthSales.fullCharge,
+          total: currentMonthSales.total,
+        },
       },
       activity: {
         total: totalActivity,
@@ -243,6 +302,7 @@ export class AdminService {
       charts: {
         newUsersByDay,
         topCourses,
+        salesByMonth,
       },
       lists: {
         topUsersByCoins,

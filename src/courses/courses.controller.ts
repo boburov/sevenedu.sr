@@ -11,6 +11,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   Req,
   Res,
   UploadedFile,
@@ -269,6 +270,25 @@ async createLessonsBatch(
   @RequirePermission('lessons.create')
   async createVimeoUploadTicket(@Body() body: CreateUploadTicketDto) {
     return this.vimeo.createUploadTicket(body.size, body.name);
+  }
+
+  // Vimeo kutubxonasi: papkalar ro'yxati (admin havolani nusxalash uchun)
+  @Get('vimeo/folders')
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('lessons.create')
+  async listVimeoFolders() {
+    return this.vimeo.listFolders();
+  }
+
+  // Vimeo kutubxonasi: bitta papkadagi videolar
+  @Get('vimeo/folders/:folderId/videos')
+  @UseGuards(AdminAuthGuard, PermissionsGuard)
+  @RequirePermission('lessons.create')
+  async listVimeoFolderVideos(
+    @Param('folderId') folderId: string,
+    @Query('page') page?: string,
+  ) {
+    return this.vimeo.listFolderVideos(folderId, Number(page) || 1);
   }
 
   // create lesson section
