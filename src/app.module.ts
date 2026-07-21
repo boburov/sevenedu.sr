@@ -21,6 +21,7 @@ import { ShopModule } from './shop/shop.module';
 import { GamesModule } from './games/games.module';
 import { MoviesModule } from './movies/movies.module';
 import { StaffModule } from './staff/staff.module';
+import { EnergyModule } from './energy/energy.module';
 import confuguration from './config/confuguration';
 
 @Module({
@@ -44,6 +45,7 @@ import confuguration from './config/confuguration';
     GamesModule,
     MoviesModule,
     StaffModule,
+    EnergyModule,
   ],
   controllers: [AppController],
   providers: [AppService, MailService],

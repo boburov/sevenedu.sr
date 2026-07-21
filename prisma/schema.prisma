@@ -63,6 +63,12 @@ model User {
   coins      Int     @default(0)
   isVerified Boolean @default(false)
 
+  // Energiya — AI so'rovi va speaking bo'limi shu balansdan yeydi.
+  // Kuniga bir marta ENERGY_DAILY_ALLOWANCE (200) gacha to'ldiriladi;
+  // do'kondan tanga evaziga qo'shimcha sotib olish mumkin.
+  energy         Int       @default(200)
+  energyRefillAt DateTime?
+
   // Streak (har kunlik faollik) — additive, default'li
   currentStreak  Int       @default(0)
   longestStreak  Int       @default(0)
@@ -86,6 +92,23 @@ model User {
   VocabularyTestResult VocabularyTestResult[]
   certificate          Certificate[]
   purchases            Purchase[]
+  energyTransactions   EnergyTransaction[]
+}
+
+// Energiya harakati — kunlik to'ldirish, sarf (AI/speaking) va tanga evaziga
+// xarid. Faqat audit/tarix uchun; joriy balans User.energy da.
+model EnergyTransaction {
+  id         String   @id @default(uuid())
+  userId     String
+  amount     Int // + to'ldirish/xarid, − sarf
+  reason     String // DAILY_REFILL | AI_REQUEST | SPEAKING_SECTION | PURCHASE
+  coinsSpent Int      @default(0)
+  balance    Int // amaldan keyingi qoldiq
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 // Do'kon mahsuloti — narxi tangada. Rasm Telegram guruhda saqlanadi

@@ -20,6 +20,60 @@ export class CoursesService {
     private uploadsService: UploadsService,
   ) { }
 
+  // ── Speaking bo'limi uchun so'zlar ───────────────────────
+  // Faqat sotib olingan (yozilgan) kurs uchun beriladi — mobil ham shu
+  // kurslarnigina ko'rsatadi, lekin ruxsatni server tekshiradi.
+  async getSpeakingWords(userId: string, courseId: string, count: number) {
+    const enrollment = await this.prisma.userCourse.findUnique({
+      where: { userId_courseId: { userId, courseId } },
+    });
+    if (!enrollment) {
+      throw new HttpException(
+        'Bu kurs sizda ochilmagan — avval kursni oling',
+        403,
+      );
+    }
+
+    const course = await this.prisma.coursesCategory.findUnique({
+      where: { id: courseId },
+      select: { id: true, title: true },
+    });
+    if (!course) throw new NotFoundException('Kurs topilmadi');
+
+    // Kursning barcha darslaridagi lug'atdan tasodifiy tanlab olamiz.
+    const rows = await this.prisma.dictonary.findMany({
+      where: {
+        Lessons: { coursesCategoryId: courseId, isVisible: true },
+        word: { not: '' },
+      },
+      select: { word: true, translated: true },
+      take: 400,
+    });
+
+    // word bo'yicha dedupe + aralashtirish.
+    const seen = new Set<string>();
+    const pool = rows.filter((r) => {
+      const key = r.word.trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+
+    const size = Math.min(Math.max(count, 1), 30);
+    return {
+      courseId: course.id,
+      courseTitle: course.title,
+      words: pool.slice(0, size).map((r) => ({
+        word: r.word.trim(),
+        translated: r.translated.trim(),
+      })),
+    };
+  }
+
   // ── CEFR daraja (modul) meta ─────────────────────────────
   // Kursning darajalari uchun tahrirlangan nom/tavsiflar ro'yxati.
   async getCourseLevels(courseId: string) {

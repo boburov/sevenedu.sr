@@ -205,6 +205,21 @@ async createLessonsBatch(
     return this.category.getcategory(id);
   }
 
+  // Speaking bo'limi uchun kurs lug'atidan so'zlar (faqat o'z kurslari).
+  @UseGuards(JwtAuthGuard)
+  @Get('category/:id/speaking-words')
+  async speakingWords(
+    @Param('id') id: string,
+    @Query('count') count: string,
+    @Req() req,
+  ) {
+    return this.courseService.getSpeakingWords(
+      req.user.id,
+      id,
+      Number(count) || 10,
+    );
+  }
+
   // ── CEFR daraja (modul) meta ─────────────────────────────
   // Kursning daraja nomlari/tavsiflari (mobile + admin o'qiydi)
   @Get(':id/levels')

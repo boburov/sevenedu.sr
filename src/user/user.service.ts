@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { UploadsService } from '../uploads/uploads.service';
+import { EnergyService } from '../energy/energy.service';
 
 @Injectable()
 export class UserService {
@@ -24,6 +25,7 @@ export class UserService {
     private prisma: PrismaService,
     private uploadService: UploadsService,
     private config: ConfigService,
+    private energy: EnergyService,
   ) {
     this.openai = new OpenAI({
       apiKey: this.config.getOrThrow('OPENAI_API_KEY'),
@@ -500,16 +502,24 @@ export class UserService {
     return { leaderboard, currentUser };
   }
 
+  /**
+   * Dars bo'yicha AI savol-javob. Har bir so'rov energiya yeydi
+   * (ENERGY_COSTS.AI_REQUEST) — energiya yetmasa 402 qaytadi. Kunlik
+   * hisoblagich (LessonAIUsage) faqat statistika uchun qoladi.
+   */
   async chatWithAI(
     userId: string,
     lessonId: string,
     message: string,
-  ): Promise<string> {
+  ): Promise<{ answer: string; energy: number }> {
+    // Energiya avval yechiladi — yetmasa OpenAI'ga umuman bormaymiz.
+    const spend = await this.energy.spend(userId, 'AI_REQUEST');
+
     try {
       const today = new Date();
       const startOfDay = new Date(today.setHours(0, 0, 0, 0));
 
-      let usage = await this.prisma.lessonAIUsage.findFirst({
+      const usage = await this.prisma.lessonAIUsage.findFirst({
         where: {
           userId,
           lessonId,
@@ -518,7 +528,7 @@ export class UserService {
       });
 
       if (!usage) {
-        usage = await this.prisma.lessonAIUsage.create({
+        await this.prisma.lessonAIUsage.create({
           data: {
             userId,
             lessonId,
@@ -526,10 +536,6 @@ export class UserService {
             count: 1,
           },
         });
-      } else if (usage.count >= 7) {
-        throw new ForbiddenException(
-          'Siz bugungi 7 ta kreditdan foydalandingiz.',
-        );
       } else {
         await this.prisma.lessonAIUsage.update({
           where: { id: usage.id },
@@ -549,9 +555,15 @@ export class UserService {
         ],
       });
 
-      return completion.choices[0].message?.content ?? 'Javob topilmadi.';
+      return {
+        answer: completion.choices[0].message?.content ?? 'Javob topilmadi.',
+        energy: spend.energy,
+      };
     } catch (error) {
       console.error('GPT chat xatosi:', error);
+
+      // Javob kelmadi — yechilgan energiyani qaytaramiz.
+      await this.refundEnergy(userId, spend.spent, 'AI_REQUEST_REFUND');
 
       if (error instanceof ForbiddenException) {
         throw error;
@@ -560,6 +572,23 @@ export class UserService {
       throw new InternalServerErrorException(
         'AI javobi olinmadi. Iltimos, keyinroq qayta urinib ko‘ring.',
       );
+    }
+  }
+
+  /** Amal bajarilmay qolganda energiyani qaytarish (best-effort). */
+  private async refundEnergy(userId: string, amount: number, reason: string) {
+    if (amount <= 0) return;
+    try {
+      const updated = await this.prisma.user.update({
+        where: { id: userId },
+        data: { energy: { increment: amount } },
+        select: { energy: true },
+      });
+      await this.prisma.energyTransaction.create({
+        data: { userId, amount, reason, balance: updated.energy },
+      });
+    } catch (e) {
+      this.logger.error(`Energiya qaytarilmadi (${userId}): ${e}`);
     }
   }
 

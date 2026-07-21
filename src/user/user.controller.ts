@@ -146,16 +146,15 @@ export class UserController {
     return this.userService.getLeaderboard(req.user.id);
   }
 
+  // Energiya yechiladi — foydalanuvchi token orqali aniqlanadi (body'dagi
+  // userId'ga ishonib bo'lmaydi, aks holda birov boshqaning energiyasini yeydi).
+  @UseGuards(JwtAuthGuard)
   @Post('chat')
   async chatWithAI(
-    @Body() body: { lessonId: string; message: string; userId: string },
-  ): Promise<{ answer: string }> {
-    const answer = await this.userService.chatWithAI(
-      body.userId,
-      body.lessonId,
-      body.message,
-    );
-    return { answer };
+    @Body() body: { lessonId: string; message: string },
+    @Req() req,
+  ): Promise<{ answer: string; energy: number }> {
+    return this.userService.chatWithAI(req.user.id, body.lessonId, body.message);
   }
 
   @Get('ai-usage')
