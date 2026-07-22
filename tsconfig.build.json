@@ -1,4 +1,7 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
+  // prisma.config.ts loyiha ildizida turadi — u build'ga qo'shilsa TypeScript
+  // rootDir'ni ildizga ko'taradi va natija dist/src/ ichiga tushib, `node dist/main`
+  // ishlamay qoladi. Prisma CLI bu faylni o'zi to'g'ridan-to'g'ri o'qiydi.
+  "exclude": ["node_modules", "test", "dist", "**/*spec.ts", "prisma.config.ts"]
 }

@@ -4,7 +4,6 @@ import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from '../prisma/prisma.module';
 import { MailModule } from '../mail/mail.module';
-import { UserService } from '../user/user.service';
 import { UploadsModule } from '../uploads/uploads.module';
 import { ConfigModule } from '@nestjs/config';
 import { JwtStrategy } from '../guard/jwt.strategy';
@@ -20,6 +19,6 @@ import { GoogleStrategy } from './strategies/google.strategy';
     })
     , PrismaModule, MailModule, UploadsModule, UserModule],
   controllers: [AuthController],
-  providers: [AuthService, UserService, JwtStrategy, GoogleStrategy]
+  providers: [AuthService, JwtStrategy, GoogleStrategy]
 })
 export class AuthModule { }

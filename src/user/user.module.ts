@@ -9,7 +9,7 @@ import { EnergyModule } from '../energy/energy.module';
 
 @Module({
   imports: [PrismaModule, UploadsModule, JwtModule, MailModule, EnergyModule],
-  exports: [UserModule],
+  exports: [UserService],
   controllers: [UserController],
   providers: [UserService],
 })
