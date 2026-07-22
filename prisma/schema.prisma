@@ -350,10 +350,17 @@ model LessonAIUsage {
 }
 
 model Certificate {
-  id       String   @id @default(uuid())
+  id String @id @default(uuid())
+  // Sertifikat tartib raqami — PDF ning chap yuqori burchagida «№ 001» ko'rinishida
+  // chiqadi. Postgres ketma-ketligi orqali beriladi: hech qachon takrorlanmaydi va
+  // yozuv o'chirilsa ham qayta ishlatilmaydi.
+  number   Int      @unique @default(autoincrement())
   userId   String
   courseId String
   score    Int
+  // PDF ga bosiladigan ism — sertifikat berilgan paytdagi holat. Keyin foydalanuvchi
+  // profilidagi ismini o'zgartirsa ham berilgan hujjat o'zgarmaydi.
+  fullName String
   issuedAt DateTime @default(now())
 
   user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
