@@ -17,6 +17,8 @@ interface Player {
   userId: string;
   name: string;
   score: number;
+  /** Qaysi kurs bo'yicha o'ynayapti (savollar shu kurs lug'atidan). */
+  courseId?: string;
 }
 
 interface Room {
@@ -46,13 +48,17 @@ export class DuelGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
   private readonly logger = new Logger('DuelGateway');
 
-  private waiting: Player | null = null;
+  // Kutish navbati KURS bo'yicha ajratilgan: ingliz tili o'ynayotgan odam
+  // koreys tili o'ynayotgan bilan juftlanmasligi kerak. Kalit — courseId
+  // (kurs tanlanmagan bo'lsa ANY_COURSE).
+  private waiting = new Map<string, Player>();
   private rooms = new Map<string, Room>();
   private socketRoom = new Map<string, string>();
   private roomSeq = 0;
 
   private static readonly ROUNDS = 5;
   private static readonly ROUND_MS = 12000;
+  private static readonly ANY_COURSE = '_any';
 
   constructor(
     private readonly games: GamesService,
@@ -80,10 +86,7 @@ export class DuelGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleDisconnect(socket: Socket) {
-    if (this.waiting && this.waiting.socket.id === socket.id) {
-      this.waiting = null;
-      return;
-    }
+    if (this.dropFromQueue(socket)) return;
     const roomId = this.socketRoom.get(socket.id);
     if (!roomId) return;
     const room = this.rooms.get(roomId);
@@ -105,49 +108,71 @@ export class DuelGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.cleanupRoom(roomId);
   }
 
+  /** Socketni kutish navbatidan olib tashlaydi. Navbatda bo'lsa `true`. */
+  private dropFromQueue(socket: Socket): boolean {
+    for (const [key, player] of this.waiting) {
+      if (player.socket.id === socket.id) {
+        this.waiting.delete(key);
+        return true;
+      }
+    }
+    return false;
+  }
+
   // ── Matchmaking ────────────────────────────────────────────────
   @SubscribeMessage('find_match')
-  async onFindMatch(@ConnectedSocket() socket: Socket) {
+  async onFindMatch(
+    @ConnectedSocket() socket: Socket,
+    @MessageBody() body?: { courseId?: string },
+  ) {
     const userId = socket.data.userId as string;
     if (!userId) return;
     if (this.socketRoom.has(socket.id)) return; // allaqachon o'yinda
-    if (this.waiting && this.waiting.socket.id === socket.id) return;
 
-    if (
-      this.waiting &&
-      this.waiting.socket.connected &&
-      this.waiting.userId !== userId
-    ) {
-      const a = this.waiting;
-      this.waiting = null;
-      await this.startMatch(a, {
+    const courseId = body?.courseId?.trim() || undefined;
+    const key = courseId ?? DuelGateway.ANY_COURSE;
+
+    // Kursni almashtirib qayta izlagan bo'lsa — eski navbatda qolib ketmasin,
+    // aks holda bitta socket ikki kursda kutib, ikki marta juftlanishi mumkin.
+    this.dropFromQueue(socket);
+
+    const waiting = this.waiting.get(key);
+
+    if (waiting && waiting.socket.connected && waiting.userId !== userId) {
+      this.waiting.delete(key);
+      await this.startMatch(waiting, {
         socket,
         userId,
         name: socket.data.name,
         score: 0,
+        courseId,
       });
     } else {
-      this.waiting = {
+      // Uzilgan socket navbatda qolib ketmasin.
+      if (waiting && !waiting.socket.connected) this.waiting.delete(key);
+      this.waiting.set(key, {
         socket,
         userId,
         name: socket.data.name,
         score: 0,
-      };
+        courseId,
+      });
       socket.emit('waiting');
     }
   }
 
   @SubscribeMessage('cancel')
   onCancel(@ConnectedSocket() socket: Socket) {
-    if (this.waiting && this.waiting.socket.id === socket.id) {
-      this.waiting = null;
-      socket.emit('cancelled');
-    }
+    if (this.dropFromQueue(socket)) socket.emit('cancelled');
   }
 
   private async startMatch(a: Player, b: Player) {
     const roomId = `duel_${++this.roomSeq}`;
-    const questions = await this.games.buildQuiz(DuelGateway.ROUNDS);
+    // Ikkalasi ham bir kursda navbatga turgan — savollar shu kursdan.
+    const questions = await this.games.buildQuiz(
+      DuelGateway.ROUNDS,
+      a.courseId ?? b.courseId,
+    );
 
     a.score = 0;
     b.score = 0;

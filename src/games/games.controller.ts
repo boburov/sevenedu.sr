@@ -15,11 +15,14 @@ import { JwtAuthGuard } from '../guard/jwt-auth.guard';
 export class GamesController {
   constructor(private readonly games: GamesService) {}
 
-  /** Mobil o'yinlar uchun tasodifiy so'zlar (Word Memory / So'z o'yini). */
+  /**
+   * Mobil o'yinlar uchun tasodifiy so'zlar (Word Memory / So'z o'yini).
+   * `courseId` berilsa — so'zlar faqat o'sha kursning lug'atidan olinadi.
+   */
   @UseGuards(JwtAuthGuard)
   @Get('words')
-  words(@Query('count') count?: string) {
-    return this.games.getWords(Number(count) || 6);
+  words(@Query('count') count?: string, @Query('courseId') courseId?: string) {
+    return this.games.getWords(Number(count) || 6, courseId || undefined);
   }
 
   /** O'yin yakunida coins mukofoti (server authoritative, cap bilan). */

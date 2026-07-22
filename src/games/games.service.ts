@@ -49,16 +49,32 @@ export class GamesService {
     return a;
   }
 
-  /** DB lug'atidan (Dictonary) so'z zaxirasi; kam bo'lsa fallback bilan to'ldiriladi. */
-  async getWordPool(limit = 120): Promise<GameWord[]> {
+  /**
+   * DB lug'atidan (Dictonary) so'z zaxirasi.
+   *
+   * [courseId] berilsa — faqat o'sha kursning darslaridagi so'zlar olinadi
+   * (o'yinlar kurs bo'yicha o'ynaladi: "ingliz tili bo'yicha so'z o'yini").
+   * Bunday holatda ingliz tilidagi built-in fallback QO'SHILMAYDI — aks holda
+   * koreys kursida inglizcha so'zlar chiqib qolardi.
+   */
+  async getWordPool(limit = 120, courseId?: string): Promise<GameWord[]> {
     const n = Math.min(Math.max(limit, 40), 400);
     let rows: GameWord[] = [];
     try {
-      rows = await this.prisma.$queryRawUnsafe<GameWord[]>(
-        `SELECT word, translated FROM "Dictonary"
-         WHERE word <> '' AND translated <> ''
-         ORDER BY random() LIMIT ${n}`,
-      );
+      rows = courseId
+        ? await this.prisma.$queryRaw<GameWord[]>`
+            SELECT d.word, d.translated
+            FROM "Dictonary" d
+            JOIN "Lessons" l ON l.id = d."lessonsId"
+            WHERE l."coursesCategoryId" = ${courseId}
+              AND l."isVisible" = true
+              AND d.word <> '' AND d.translated <> ''
+            ORDER BY random() LIMIT ${n}`
+        : await this.prisma.$queryRawUnsafe<GameWord[]>(
+            `SELECT word, translated FROM "Dictonary"
+             WHERE word <> '' AND translated <> ''
+             ORDER BY random() LIMIT ${n}`,
+          );
     } catch {
       rows = [];
     }
@@ -73,8 +89,9 @@ export class GamesService {
       pool.push({ word: r.word.trim(), translated: r.translated.trim() });
     }
 
-    // Yetarli xilma-xillik uchun fallback qo'shamiz.
-    if (pool.length < 8) {
+    // Yetarli xilma-xillik uchun fallback qo'shamiz — faqat umumiy (kurssiz)
+    // rejimda: kurs tanlangan bo'lsa uning tili boshqa bo'lishi mumkin.
+    if (!courseId && pool.length < 8) {
       for (const w of FALLBACK_WORDS) {
         const key = w.word.toLowerCase();
         if (seen.has(key)) continue;
@@ -86,16 +103,19 @@ export class GamesService {
   }
 
   /** Mobil o'yinlar (Word Memory / So'z o'yini) uchun tasodifiy so'zlar. */
-  async getWords(count: number): Promise<GameWord[]> {
+  async getWords(count: number, courseId?: string): Promise<GameWord[]> {
     const c = Math.min(Math.max(count || 6, 1), 30);
-    const pool = await this.getWordPool();
+    const pool = await this.getWordPool(120, courseId);
     return this.shuffle(pool).slice(0, c);
   }
 
   /** Viktorina savollari — har biri 4 variantli (Duel uchun, server authoritative). */
-  async buildQuiz(count: number): Promise<QuizQuestion[]> {
+  async buildQuiz(count: number, courseId?: string): Promise<QuizQuestion[]> {
     const c = Math.min(Math.max(count || 5, 1), 20);
-    const pool = await this.getWordPool();
+    let pool = await this.getWordPool(120, courseId);
+    // Kursda savol yasashga so'z yetmasa — o'yin buzilmasligi uchun umumiy
+    // zaxiraga tushamiz (duelda ikkala o'yinchi ham kutib qolmasin).
+    if (pool.length < 4) pool = await this.getWordPool();
     const targets = this.shuffle(pool).slice(0, c);
 
     return targets.map((t) => {
